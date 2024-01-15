@@ -1,0 +1,508 @@
+#!/usr/bin/perl
+#
+# prepphysio
+#
+# Preprocess Siemens physiological data dump files and convert them into a
+# simpler format usable by AFNI and pretty much any other software.
+# Isolates the portion of the data corresponding to the scan time marked
+# once per TR by the external triggers. Synchronizes the physio data start with
+# the first trigger. Aligns physio logs starting at slightly different times.
+#
+# Fred Tam, September 2006
+#
+# 20060929 FT: added working ECG support
+# 20061010 FT: added options to select outputs (Getopt support)
+# 20061107 FT: added -d option to disable TR consistency check; update help
+# 20151023 FT: updates for Skyra/Prisma (VD13): strip out delimited headers too;
+#  assume 4 interleaved traces for ECG instead of 2 (ECG not tested); new
+#  sampling rates; adjust the start of the outputs based on MDH timestamp; zero-
+#  pad the end if the trace is shorter than the TR indicates
+# 20160719 FT: more updates for VD/VE: look for triggers in .ext2 file if none
+#  found in .ext file; -q option to opt out of info messages (instead of opting
+#  in using -v, which can now print out more obscure things)
+# 20170829 FT: support conversion even when triggers are bogus (-D)
+# 20200125 FT: support skipping first (-f) and last (-l) triggers; check and
+#  quit instead of overwriting existing files, unless -o option is given
+
+use POSIX ();
+use Getopt::Std;
+
+############### Configuration ###############
+
+# Value corresponding to a trigger in trigger outputs (>1 best for 3dretroicor)
+$trigval = 5;
+
+# External Trigger sampling rate in ms
+$extdt = 2.5;   # 2.5 ms = 400 Hz
+# Respiratory Trace sampling rate in ms
+$respdt = 2.5;  # 2.5 ms = 400 Hz
+# Pulse Trace sampling rate in ms
+$pulsdt = 2.5;  # 2.5 ms = 400 Hz
+
+# ECG Trace sampling rate per trace in ms
+$ecgdt = 2.5;   # 2.5 ms = 400 Hz
+# ECG1 Trace offset
+$ecg1offset = 2048;
+# ECG2 Trace offset
+$ecg2offset = 10240;
+# ECG3 Trace offset
+$ecg3offset = 18432;
+# ECG4 Trace offset
+$ecg4offset = 26624;
+
+# Value corresponding to a trigger in trace input
+$trigmark = 5000;
+# Value corresponding to a trigger offset
+#$trigstop = 6000; # Not currently used; I just record, no triggered scanning
+
+# Value that starts a header field
+$headermark = 5002;
+# Value that ends a header field
+$headerstop = 6002;
+# Value that starts the footer
+#$footermark = 5003;  # Not currently used; we just chop the end off
+# Value that ends the footer
+#$footerstop = 6003;  # Not currently used; we just chop the end off
+
+############ End of Configuration ###########
+
+############### Subroutines #################
+
+# Called by Getopt for --help
+sub HELP_MESSAGE()
+{
+  my $myname = $0;
+  $myname =~ s{.*/(.*)}{$1};
+
+  print <<EOF
+Usage: $myname [options] <physio file prefix>
+
+ Preprocess Siemens physiological data dump files and convert them into a
+ simpler format usable by AFNI and pretty much any other software.
+
+ <physio file prefix> is the common prefix of the physio data files. Do not
+ include the .ecg/.ext/.puls/.resp suffix. The output file names will have a
+ .1D suffix and will contain only the physio data acquired during the run
+ (omitting physio data before and after the run). The outputs may be used
+ directly for RETROICOR in AFNI and are easily read by other software as well.
+
+ NOTE: The data should come from a SINGLE RUN (scan). Multiple runs in one
+ physio data dump are not separated by this program and are a bad idea anyways
+ because of limitations of the physio data collection system (however, see the
+ examples and the -f, -l, -d and -D options for some ideas to help you deal with
+ such data). Wait a few seconds after the end of a scan before stopping the
+ physio data recording, to allow the buffered data from the last few seconds of
+ the scan to be written to the file.
+
+ NOTE 2: This version is compatible with VD13 and above. Obtain an older
+ version for use with VB17.
+
+ NOTE 3: With VD13 and VE11, ECG recording is limited to ~5min. Stop the
+ ECG logging if you are not using ECG (e.g. start all signals and then
+ immediately stop ECG in ideacommandtool)--otherwise, ALL logging will silently
+ stop by itself after ~5min.
+
+ The [options], which must appear before <physio file prefix>, include:
+
+ -d  Disable TR consistency check. Mostly for troubleshooting. Unless you are
+     deliberately varying the TR, which is unlikely, failing this sanity check
+     means the data come from multiple runs or there is something wrong with
+     the trigger source or sampling equipment.
+
+     If you disable this check, the duration of the output files may not match
+     the duration of the run. It may be close enough if you are sure that the
+     input data are from a single run, but you must check the length of the
+     output before you use it.
+
+ -D  Don't even check the external triggers; only temporally align the physio
+     signals. Trim the data only based on start time, not based on external
+     triggers. The external trigger log is still required, but don't die if
+     there were actually no triggers due to hardware not connected or
+     unsupported pulse sequence. Not recommended, but occasionally useful.
+
+     You are on your own as to synchronizing with any imaging data. Consider
+     using -x to see if there are any useful triggers, and -v for start and
+     end time stamps to help you (look for similar timestamps in DICOM image
+     files). Implies -d.
+
+ -e  Output ECG data too. ECG data are ignored by default; we prefer pulse.
+
+ -f <n>  Skip the first <n> triggers. Use this to discard physio data acquired
+     during a pre-scan period when images were not acquired (despite triggering)
+     or where those images will be discarded before any physio correction. The
+     goal is to be left with only the physio data associated with the images
+     that are to be processed. See also -l and Example 2.
+
+ -l <n>  Skip the last <n> triggers. Use this to discard physio data acquired
+     during a post-scan period when images were not acquired (despite
+     triggering) or where those images will be discarded before any physio
+     correction. The goal is to be left with only the physio data associated
+     with the images that are to be processed. See also -f and Example 2.
+
+ -o  Overwrite output files that already exist. The new default is to quit
+     rather than to overwrite files you might not want to overwrite.
+
+ -q  Be quiet. Don't print informational messages.
+
+ -r  Output raw pulse trace rather than triggers. Pulse triggers are output by
+     default, while respiration and ECG are output as raw traces.
+
+ -v  Be verbose. Mostly for troubleshooting.
+
+ -x  Output the external trigger too. Mostly for troubleshooting.
+
+ One further option that may be useful: --help (to display this message).
+
+Example 1: $myname myfmri-run1
+
+ Turns files named myfmri-run1.{ext|puls|resp} into files named
+ myfmri-run1.{puls|resp}.1D, which can be used in AFNI, etc. This is the
+ most common usage for FMRI processing.
+
+Example 2: $myname -l 3 myfmri+postscan
+
+ Let's say your fMRI run was immediately followed by a 3-timepoint reference
+ scan which was not part of the fMRI run but nevertheless ended up being
+ included in the physio data recording. Skipping the last 3 triggers with -l3
+ isolates the physio data of the fMRI run proper.
+
+ This is also a way to separate two whole fMRI runs that were accidentally
+ scanned in one physio data file: Run $myname first with -l to skip the
+ triggers associated with the second run, and rename the outputs for use with
+ the first fMRI run. Then run $myname again with -f to skip the triggers
+ associated with the first run, and rename the outputs for use with the second
+ fMRI run.
+
+EOF
+  ;
+  exit 1;
+}
+
+# Called by Getopt for --version
+sub VERSION_MESSAGE () {
+  HELP_MESSAGE;
+}
+
+# Load a Siemens physio data dump file and strip the extra baggage,
+# returning the start time (ms since midnight) followed by the full data
+# (including both triggers and trace)
+sub loadphysiofile($$)
+{
+  my $filename = shift; # The full physio data dump file name
+  my $headlen = shift;  # Number of items in the initial header (to skip)
+			# - There are 4 items, except 5 for ECG data files
+  local (*PFILE);
+  open(PFILE, "$filename") or die "Could not open $filename. Stopped";
+  defined(my $pfile = <PFILE>) or die "Could not read $filename. Stopped";
+  chomp($pfile);
+  $pfile =~ s/^\s*//;
+
+  # Drop any delimited headers (can appear anywhere in the stream)
+  $pfile =~ s/ $headermark .*? $headerstop//g;
+
+  my @pfile = split(/\s+/, $pfile);
+
+  # Drop the last and first $headlen elements (config info codes, not useful)
+  pop(@pfile);
+  for (my $i = 0; $i < $headlen; $i++) { shift(@pfile); }
+
+  # Continue reading to find the start time
+  my $startt = -1;
+  while ($pfile = <PFILE>) {
+    if ($pfile =~ /LogStartMDHTime: *(\d+)/) {
+      $startt = $1;
+      last;
+    }
+  }
+  die "Start time not found in $filename. Is the file cut off? Stopped" if ($startt < 0);
+
+  close PFILE;
+  return $startt, @pfile;
+}
+
+# Take a partly-stripped physio data array and return just the triggers
+sub gettriggers(@)
+{
+  my @tracefile = @_;	# Physio data (from loadphysiofile)
+
+  # Transform trace file to stick function
+  for my $trace (@tracefile) {
+    $trace = $trace == $trigmark ? $trigval : 0;
+  }
+  # The triggers actually correspond to the trace datapoint immediately before.
+  # Get rid of extra datapoint.
+  my $trace = join("\n", @tracefile);
+  $trace =~ s/0\n$trigval/$trigval/g;
+
+  return split(/\n/, $trace);
+}
+
+# Ensure there are actually triggers present after gettriggers
+sub checktriggers(@)
+{
+  my $trace = join("\n", @_);
+  return $trace =~ /$trigval/;
+}
+
+# Take a partly-stripped physio data array and return just the raw trace
+sub gettrace(@)
+{
+  # Just strip out the triggers
+  my $trace = join("\n", @_);	# Physio data (from loadphysiofile)
+  $trace =~ s/^$trigmark\n//;
+  $trace =~ s/\n$trigmark\n/\n/g;
+  $trace =~ s/\n$trigmark$//;
+  return split(/\n/, $trace);
+}
+
+# Return the nth interleaved trace from an array containing multiple traces
+# interleaved together
+sub extractinterleavedtrace($$@)
+{
+  my $intnum = shift;   # Number of interleave to extract (0-base)
+  my $inttotal = shift; # Total number of interleaves in the input array
+  my @inttrace;
+
+  for (my $inti = 0, my $i = $intnum; $i < @_; $inti++, $i += $inttotal) {
+    $inttrace[$inti] = $_[$i];
+  }
+
+  return @inttrace;
+}
+
+# Subtract a constant from all elements of a trace
+sub offsettrace($@)
+{
+  my $toffset = shift;
+  my @trace = @_;
+  for my $trace (@trace) {
+    $trace -= $toffset;
+  }
+  return @trace;
+}
+
+# Number of milliseconds in a day
+$daymst = 24*60*60*1000;
+
+# Calculate offset of physio log start from ext log start
+sub tdiff($$)
+{
+  my $physiot = shift;	# Physio data log start time
+  my $extt = shift;	# External Trig log start time
+
+  my $difft = $physiot - $extt;
+
+  # Deal with time wrap about midnight
+  if ($difft > $daymst / 2) {
+    $difft -= $daymst;
+  } elsif ($difft < -$daymst / 2) {
+    $difft += $daymst;
+  }
+
+  if (abs($difft) > 3000) {
+    die "Physio data start time differs from trigger data start time by several seconds. Something was weird with the recording system or these data files may be from different runs. Stopped";
+  }
+
+  return $difft;
+}
+
+# Convert time since midnight (in ms) to human-readable clock time
+sub tpprint($)
+{
+  my $tsmid = shift;
+  my $clockh = $tsmid / 1000 / 60 / 60;
+  my $outclockh = POSIX::floor($clockh);
+  my $clockm = ($clockh - $outclockh) * 60;
+  my $outclockm = POSIX::floor($clockm);
+  my $outclocks = ($clockm - $outclockm) * 60;
+  return sprintf("%02d:%02d:%06.3f", $outclockh, $outclockm, $outclocks);
+}
+
+# Print the portion of the (triggers) trace occurring during the scan to ofile
+sub printscantrace($$$$@)
+{
+  my $ofile = shift;     # Output filehandle typeglob
+  my $starttime = shift; # print if >= $starttime (relative to data start)
+  my $endtime = shift;   # print if < $endtime (not <=)
+  my $tracedt = shift;   # Sampling period of data (ms)
+
+  my $firstsample = POSIX::ceil($starttime / $tracedt);
+  my $lastsample = POSIX::floor($endtime / $tracedt);
+  # Fix up if falls exactly on bound, since $endtime is non-inclusive bound
+  $lastsample -= 1 if ($lastsample * $tracedt == $endtime);
+  if ($lastsample > $#_) {
+    my $missingt = sprintf("%.1f", ($lastsample - $#_) * $tracedt / 1000);
+
+    die "Physio data $missingt seconds shorter than triggers. Did you stop one of the signal logs during the scan? Stopped" if $missingt > 3; # arbitrary badness threshold
+    warn "Warning: Physio data $missingt seconds shorter than triggers. Did you stop the physio logger too soon after the scan? Wait a few seconds to let the buffers flush next time. Adding zeros to the end of the output to make up the time. The data should still be usable.\n";
+
+    push(@_, (0) x ($lastsample - $#_)); # zero-pad the data
+  }
+
+  print $ofile join("\n", @_[$firstsample..$lastsample]), "\n";
+}
+
+################# Mainline #################
+
+#$Getopt::Std::STANDARD_HELP_VERSION = 1;
+getopts('dDerxvqf:l:o', \%opts) or HELP_MESSAGE;
+
+# Parse the remaining arguments
+HELP_MESSAGE if @ARGV != 1;
+$iprefix = $ARGV[0];
+$iprefix =~ s{\.$}{};
+$oprefix = $iprefix;
+$oprefix =~ s{.*/}{};
+
+# The ext triggers are required to determine the scan duration, so load them
+if (-e "$iprefix.ext") {
+  ($extstartt, @exttrig) = loadphysiofile("$iprefix.ext", 4);
+  @exttrig = gettriggers(@exttrig);
+}
+# Try the other ext trigger file if necessary
+if (not -e "$iprefix.ext" or not checktriggers(@exttrig)) {
+  print "No triggers in $iprefix.ext. Trying $iprefix.ext2 instead.\n" if defined($opts{v});
+  ($extstartt, @exttrig) = loadphysiofile("$iprefix.ext2", 4);
+  @exttrig = gettriggers(@exttrig);
+  if (!checktriggers(@exttrig) and !defined($opts{D})) {
+    die "No triggers found in $iprefix.ext or $iprefix.ext2. Are the files there? Did you even scan? We use scanner triggers to easily and reliably find and align the physio data with the images. Stopped";
+  }
+}
+
+# Clobber the first and last triggers we were asked to skip
+if (defined($opts{f}) and $opts{f} > 0) {
+  for (my $i = 0, $skipped = 0; $i <= $#exttrig and $skipped < $opts{f}; $i++) {
+    if ($exttrig[$i] == $trigval) {
+      $exttrig[$i] = 0;
+      $skipped++;
+    }
+  }
+  print "First $skipped triggers skipped.\n" if defined($opts{v});
+}
+if (defined($opts{l}) and $opts{l} > 0) {
+  for (my $i = $#exttrig, $skipped = 0; $i >= 0 and $skipped < $opts{l}; $i--) {
+    if ($exttrig[$i] == $trigval) {
+      $exttrig[$i] = 0;
+      $skipped++;
+    }
+  }
+  print "Last $skipped triggers skipped.\n" if defined($opts{v});
+}
+if (!checktriggers(@exttrig) and !defined($opts{D})) {
+  die "No triggers found. Did you skip too many? We use scanner triggers to easily and reliably find and align the physio data with the images. Stopped";
+}
+
+# Figure out when the scan started
+if (defined($opts{D})) {
+  $starttime = 0;
+  warn "Skipping external trigger synch (-D). Good luck.\n";
+} else {
+  @extinterval = split(/$trigval/, join("", @exttrig));
+  die "Was the scan only 1 measurement long? Did you even scan? Skip too many triggers? There were fewer than two external reference timing triggers found. It is not possible to match the physio data with a scan. Stopped" if @extinterval < 3;
+  $starttime = length($extinterval[0]) * $extdt;
+}
+printf "Aligned data start time (>=): %d (%s).\n", $extstartt + $starttime, tpprint($extstartt + $starttime) if defined($opts{v});
+
+# Figure out when the scan ended
+if (defined($opts{D})) {
+  $endtime = scalar(@exttrig) * $extdt;  # Go all the way to the log file end
+} else {
+  # Create histogram of inter-trigger intervals, ignoring first and last
+  for (my $i = 1; $i < $#extinterval; $i++) {
+    $extinthist{length($extinterval[$i])}++;
+  }
+
+  # Get the mode of intervals to calculate TR and scan end time
+  @extintuniq = keys %extinthist;
+  $extintmode = (sort { $extinthist{$b} <=> $extinthist{$a} } @extintuniq)[0];
+  $tr = ($extintmode + 1) * $extdt;
+  # Index of last trigger * sampling interval + TR
+  $endtime = ($#exttrig - length($extinterval[$#extinterval])) * $extdt + $tr;
+
+  # Print minimum and maximum TR
+  ($mintr, $maxtr) = (sort {$a <=> $b} @extintuniq)[0, $#extintuniq];
+  $mintr = ($mintr + 1) * $extdt;
+  $maxtr = ($maxtr + 1) * $extdt;
+  $numtr = $#extinterval;
+  $trmsg = "Detected TR = $tr ms (Min TR = $mintr ms, Max TR = $maxtr ms); Time Points = $numtr)\n";
+  # Check that the TR was reasonably consistent (will also fail if multiple runs)
+  if (!defined($opts{d}) and ($tr - $mintr > $extdt * 2 or $maxtr - $tr > $extdt * 2)) {
+    die "$trmsg\nDoes this file cover multiple scans? The TR is not consistent. See the help for more about this consistency check. Stopped";
+  }
+  print $trmsg unless defined($opts{q});
+}
+printf "Aligned data end time (<): %d (%s).\n", $extstartt + $endtime, tpprint($extstartt + $endtime) if defined($opts{v});
+
+# External trigger is not very useful except for timing, but output if asked
+if (defined($opts{x})) {
+  die "$oprefix.ext.1D already exists. If you want to overwrite it, use the -o option. Stopped" if (-e "$oprefix.ext.1D") and not defined($opts{o});
+  open(OFILE, ">$oprefix.ext.1D") or die "Could not open $oprefix.ext.1D for writing. Stopped";
+  printscantrace(*OFILE, $starttime, $endtime, $extdt, @exttrig);
+  close OFILE;
+}
+
+# Process the resp data
+if (-e "$iprefix.resp") {
+  ($respstartt, @resptrace) = loadphysiofile("$iprefix.resp", 4);
+  $respoffsett = tdiff($respstartt, $extstartt);
+  @resptrace = gettrace(@resptrace);
+
+  die "$oprefix.resp.1D already exists. If you want to overwrite it, use the -o option. Stopped" if (-e "$oprefix.resp.1D") and not defined($opts{o});
+  open(OFILE, ">$oprefix.resp.1D") or die "Could not open $oprefix.resp.1D for writing. Stopped";
+  printscantrace(*OFILE, $starttime - $respoffsett, $endtime - $respoffsett, $respdt, @resptrace);
+  close OFILE;
+
+} else {
+  print "WARNING: $iprefix.resp not found.\n";
+}
+
+# Process the pulse data
+if (-e "$iprefix.puls") {
+  ($pulsstartt, @pulstrig) = loadphysiofile("$iprefix.puls", 4);
+  $pulsoffsett = tdiff($pulsstartt, $extstartt);
+  if (defined($opts{r})) {
+    @pulstrig = gettrace(@pulstrig);
+  } else {
+    @pulstrig = gettriggers(@pulstrig);
+  }
+
+  die "$oprefix.puls.1D already exists. If you want to overwrite it, use the -o option. Stopped" if (-e "$oprefix.puls.1D") and not defined($opts{o});
+  open(OFILE, ">$oprefix.puls.1D") or die "Could not open $oprefix.puls.1D for writing. Stopped";
+  printscantrace(*OFILE, $starttime - $pulsoffsett, $endtime - $pulsoffsett, $pulsdt, @pulstrig);
+  close OFILE;
+
+} else {
+  print "WARNING: $iprefix.puls not found.\n";
+}
+
+# Process the ECG data
+if (defined($opts{e})) {
+  if (-e "$iprefix.ecg") {
+    ($ecgstartt, @ecgtrace) = loadphysiofile("$iprefix.ecg", 5);
+    $ecgoffsett = tdiff($ecgstartt, $extstartt);
+    @ecgtrace = gettrace(@ecgtrace);
+
+    die "$oprefix.ecg1.1D already exists. If you want to overwrite it, use the -o option. Stopped" if (-e "$oprefix.ecg1.1D") and not defined($opts{o});
+    open(OFILE, ">$oprefix.ecg1.1D") or die "Could not open $oprefix.ecg1.1D for writing. Stopped";
+    printscantrace(*OFILE, $starttime - $ecgoffsett, $endtime - $ecgoffsett, $ecgdt, offsettrace($ecg1offset, extractinterleavedtrace(0, 4, @ecgtrace)));
+    close OFILE;
+
+    die "$oprefix.ecg2.1D already exists. If you want to overwrite it, use the -o option. Stopped" if (-e "$oprefix.ecg2.1D") and not defined($opts{o});
+    open(OFILE, ">$oprefix.ecg2.1D") or die "Could not open $oprefix.ecg2.1D for writing. Stopped";
+    printscantrace(*OFILE, $starttime - $ecgoffsett, $endtime - $ecgoffsett, $ecgdt, offsettrace($ecg2offset, extractinterleavedtrace(1, 4, @ecgtrace)));
+    close OFILE;
+
+    die "$oprefix.ecg3.1D already exists. If you want to overwrite it, use the -o option. Stopped" if (-e "$oprefix.ecg3.1D") and not defined($opts{o});
+    open(OFILE, ">$oprefix.ecg3.1D") or die "Could not open $oprefix.ecg3.1D for writing. Stopped";
+    printscantrace(*OFILE, $starttime - $ecgoffsett, $endtime - $ecgoffsett, $ecgdt, offsettrace($ecg3offset, extractinterleavedtrace(2, 4, @ecgtrace)));
+    close OFILE;
+
+    die "$oprefix.ecg4.1D already exists. If you want to overwrite it, use the -o option. Stopped" if (-e "$oprefix.ecg4.1D") and not defined($opts{o});
+    open(OFILE, ">$oprefix.ecg4.1D") or die "Could not open $oprefix.ecg4.1D for writing. Stopped";
+    printscantrace(*OFILE, $starttime - $ecgoffsett, $endtime - $ecgoffsett, $ecgdt, offsettrace($ecg4offset, extractinterleavedtrace(3, 4, @ecgtrace)));
+    close OFILE;
+
+  } else {
+    print "WARNING: $iprefix.ecg not found.\n";
+  }
+}

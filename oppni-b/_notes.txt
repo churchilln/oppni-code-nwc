@@ -1,0 +1,26 @@
+
+To integrate:
+
+> integrate physio data for ricor
+
+> add an alignment QC protocol
+    * store func1_warped_tav_noal in postwarp --> for qc of e2a
+    * store func1_warped_tsd / func1_warped_tsd_nomc --> for qc of motcor
+    * use [anat_warped/GM/WM/CSF] ... already obtained, use for qc of flexwarp
+    * use [func1_warped] ... already obtained, use for qc of net warp
+    - measure (a) difference in intersubj var of full-warp e2a vs. noal [e2a alignment effects]
+              (b) difference of intrasubj var of full-warp motcor vs. nomc [motcor effects]
+              (c) group similarity of anat_warped/GM/WM/CSF, fun1_warped
+    - assess overall fidelity of warping protocol, cf against others
+
+> refactor clustering tool as (a) algorithm itself and (b) nifti wrapper
+> make clustering wrapper that takes thresholded image, underlying atlas, +spreadsheet
+  and outputs table of clusters with nearest regions etcv.
+
+> step that collects pipeline effic information, then deletes;
+  e.g., kurtosis+despike, reho+tshift, var+ricor/motcor,
+  and something similar for regression proccing
+
+> pipeline "split-half" option for handling regression processing etc.
+
+> measure amt. of affine motion / nonlinear displacement to check for abnormal cases

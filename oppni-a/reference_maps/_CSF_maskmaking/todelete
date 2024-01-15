@@ -1,0 +1,49 @@
+
+> threholded anat_pCSF_grp at 90%
+> manually segmented out lateral ventricles
+> symmetrized (union with dim-1 flip)
+> slicewise dilation x3
+> split in half on x-axis at origin
+> SAA for 3V and 4V (sans split)
+> SAA for anat_pWM_grp, dividing cortical+subcort (CnS) from brainstem+cerebell (BnC)
+
+V=load_untouch_nii('anat_pCSF_grp.nii');
+V.img = double(V.img>0.9);
+save_untouch_nii(V,'anat_pCSF_msk.nii');
+
+V=load_untouch_nii('anat_pWM_grp.nii');
+V.img = double(V.img>0.9);
+save_untouch_nii(V,'anat_pWM_msk.nii');
+
+
+ V=load_untouch_nii('3V_mask1.nii');
+ V.img = double( (V.img + flipdim(V.img,1))>0);
+ save_untouch_nii(V,'3V_mask2_symm.nii')
+ for z=1:size(V.img,3) V.img(:,:,z) = imdilate( double(V.img(:,:,z)), strel('disk',1,0) ); end
+ save_untouch_nii(V,'3V_mask3_dil1.nii')
+ for z=1:size(V.img,3) V.img(:,:,z) = imdilate( double(V.img(:,:,z)), strel('disk',1,0) ); end
+ save_untouch_nii(V,'3V_mask3_dil2.nii')
+ for z=1:size(V.img,3) V.img(:,:,z) = imdilate( double(V.img(:,:,z)), strel('disk',1,0) ); end
+ save_untouch_nii(V,'3V_mask3_dil3.nii')
+
+ V=load_untouch_nii('4V_mask1.nii');
+ V.img = double( (V.img + flipdim(V.img,1))>0);
+ save_untouch_nii(V,'4V_mask2_symm.nii')
+ for z=1:size(V.img,3) V.img(:,:,z) = imdilate( double(V.img(:,:,z)), strel('disk',1,0) ); end
+ save_untouch_nii(V,'4V_mask3_dil1.nii')
+ for z=1:size(V.img,3) V.img(:,:,z) = imdilate( double(V.img(:,:,z)), strel('disk',1,0) ); end
+ save_untouch_nii(V,'4V_mask3_dil2.nii')
+ for z=1:size(V.img,3) V.img(:,:,z) = imdilate( double(V.img(:,:,z)), strel('disk',1,0) ); end
+ save_untouch_nii(V,'4V_mask3_dil3.nii')
+
+
+>> for z=1:size(V.img,3) V.img(:,:,z) = imdilate( imerode( double(V.img(:,:,z)), strel('disk',1,0) ), strel('disk',1,0) ); end
+>> save_untouch_nii(V,'WM_mask1_erodil5.nii')
+
+V=load_untouch_nii('CRT_mask3_dil3.nii');
+V2=V;
+V2.img(96:end,:,:)=0;
+save_untouch_nii(V2,'CRT_mask4_llat.nii')
+V2=V;
+V2.img(1:98,:,:)=0;
+save_untouch_nii(V2,'CRT_mask4_rlat.nii')

@@ -1,0 +1,228 @@
+
+
+--> we may improve on the density estimator, e.g., using
+    Biased CV estimates (c.f., "Cross-validation of multivariate densities" (1992) by Sain, Baggerly, Scott
+
+
+ scp texturial_code/* nwc@beluga.computecanada.ca:/home/nwc/projects/def-nwc/nwc/tex_code
+ scp -r nwc@beluga.computecanada.ca:/home/nwc/projects/def-nwc/nwc/texturial_matfiles_h_aD texturial_matfiles_all
+
+
+scp nwc@beluga.computecanada.ca:/home/nwc/project/def-nwc/nwc/texturial_matfiles_vox texturial_matfiles_vox
+
+
+* HDEs are more vulnerable to "aliasing" effects of discrete data,
+  limiting accessible bandwidths
+
+
+
+====================================
+
+
+establishing superiority of KDE over HDE
+
+> generalization error (trivial)
+> better recovery in cases of noise/artifact?
+> robustness to sapmle variation?
+> robustness to shift in BW?
+> robustness to shift in window?
+
+    --> robustness in terms of (a) reconstructed density
+        and (b) actual texture metrics
+
+
+
+====================================
+
+for multi-modal alignment:
+
+[see e.g. https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/DiffusionV6.0]
+
+einame = 'sub-NCOV1F004_ses-V01';
+
+ranii = sprintf('%s/%s/rawdata/anat1_zclip.nii.gz',einame);
+ramgz = sprintf('%s/mri/orig/001.mgz',einame);
+comgz = sprintf('%s/mri/orig.mgz',einame);
+avmgz = sprintf('%s/mri/rawavg.mgz',einame);
+asmgz = sprintf('%s/mri/aparc.a2009s+aseg.mgz',einame);
+
+prfix = 'sub-NCOV1F004_ses-V01';
+
+% standard protocol to get segmentation in t1 space...
+unix(sprintf('mri_label2vol --seg %s --temp %s --regheader --o %s_seg.mgz', asmgz, ramgz, prfix));
+unix(sprintf('mri_convert --in_type mgz --out_type nii %s_seg.mgz %s_seg.nii',prfix,prfix));
+
+% protocol to get segmentation in t2 space...
+str='bbregister --s sub-NCOV1F004_ses-V01 --mov sub-NCOV1F004_ses-V01_acq-space_T2w.nii.gz --reg rego004.dat --t2';
+unix(str)
+str='mri_vol2vol --mov sub-NCOV1F004_ses-V01_acq-space_T2w.nii.gz --targ sub-NCOV1F004_ses-V01/mri/aparc.a2009s+aseg.mgz --inv --interp nearest --o pogul.mgz --reg rego004.dat --no-save-reg';
+unix(str);
+
+
+
+TO-DO:
+
+1. determine if BW setting influences texture estimates
+    >collect sample of extant cv-fitt data
+    >stratify on error, see if matches subcort only
+    >try increasingly fixed fitts; (sub x roi), (roi), [glob]
+    >try also glob/10, glob/100, glob*10, glob*100
+   compare texture measures in terms of mean and ICC by BW setting
+2. if minimally affected, try differnt %range scaling settings
+3. and try trimmed/untrimmed roivols
+
+** what about unifizing??
+
+
+====================================
+
+-in terms of optimization, we can partition CV error & optimal spatial scale SZ
+
+    > for SZ, coefficient of variation is 0.60 (byroi) > 0.30 (bysubj) > 0.15 (bydir)
+      and stdev is 1.70 (byroi) > 0.97 (bysubj) > 0.45 (bydir) (x10^-4)
+    > and for CV, even more pronounced CoV of 0.40 (byroi) > 0.30 (bysubj) > 0.04 (bydir)
+      and stdev is 7.6 (byroi) > 5.4 (bysubj) > 0.7 (bydir)
+
+    >between-roi differences are likely related to the size of the regions (and hence the number of sampling points)
+     scale is highly (inversely) related to sample size, so we tend to choose finer resolution if more
+     data are present; CVerr also tracks somewhat inversely with sample size, although noisier relationships
+
+-so... let's run a subset of subjects & directions to tune BW, then feed back to model??
+
+* also turns out there is a minimal difference in texture metrics based on whether you optimize by
+  dir / dir+subj / dir+subj+roi
+  rank relationships seem to be preserved across subjects/regions
+
+* range rescaling ==> we don't want to use dispersion-based cutoffs since that would truncate the tails??
+
+* grand median: 2.7*10^-4
+
+-current examining roi-based texture mapping for mid-size rois
+-issues to be resolved; current goal is to find a workable "default", further
+ focus on optimization later
+
+>current plan is to use KDE with adaptive bandwidth optimization
+>based on datapoints within a rescaled range of [0,1]x[0,1]
+>bandwidth chosen to minimize Rudemo et al. cross-validation error
+
+issues to consider:
+
+(1) Hist vs HDE vs KDE
+
+    >use of KD approach is supported by theory -- lower generalization error
+     and no issues with discretization sensitivity and bin boundaries
+    >need to provide some empirical support, e.g., with both qualitative
+     (show blockyness/boundary issues) and cv err ... maybe stability too?
+
+(2) bandwidth selection
+
+    >choice has a huge impact on estimated density plots and resulting texture measures 
+    >need to show this empirically, e.g., oversmoothing/binning
+     ! and to refute that damn plos paper !
+    >multiple levels of granularity possible:
+        (subject x brain region x step direction)
+     direction seems to be least sensitive to choice ... can subsample a bit.
+     seems like 5-dir is good approx, average deviation in BW consistently <5% relative to full 13-direction
+    >good test range seems to be [b_silv/500 --> b_silv/5], where b_silv = silverman bandwidth estimator 
+    >better to adapt BW flexibly or fix for a given series of tests?
+
+(3) scaling & location
+
+    >"scale" of data affects all texture metrics; but digitization of MRI signal is somewhat arbitrary
+     at the very least is site-dependent, may be even more variable
+    > show example, e.g., bigger range = more compact distro / changes in values
+    >ideally rescale the "window" of analysis [0,1]x[0,1] but how to determine bounds?
+    >multiple options
+        -scale locally, e.g., based on some specified range rule given the data (min/max -/+ x% of range; +- x standard deviations of mean; ...)
+        -scale across subjects, e.g., pooling all data and getting a fixed range (saa but more consistent)
+        -scale by brainmap, e.g., getting distro on voxel values throughout the brain
+        *if non-local, may need to adjust for mag-field inhomog effects (e.g. unifize) for robustness
+    >similar issue of centering, only relevant to a few texture measures
+     where a shift in location of distro changes, e.g., cluster shade/prominence
+
+
+(4) number of datapoints
+
+    >number of datapoints affects texture indices -- smaller samples appear less dispersed, by choose to oversmooth etc.
+    >show simple example of this case
+
+
+** collect full set of BW estim, explore variation across subjects, regions, directions **
+** try some local centering/scaling methods **
+
+
+Base codeset:
+
+TEX_PREP_INS -> example script that organizaes nifti files and runs texture analysis on each one
+    texmap_wrapper3 -> high-level script takes nifti and runs voxelwise or roi-based texture mapping
+        texmap_image3 -> (voxelwise mapping) sweeps roi box through image; runs roi_to_glca3 
+        roi_to_glca3 -> preps matrix to run texture mapping
+            glca3 -> gets glcm and texmap metrics
+
+--> now refining for kernel-based analysis!
+
+================
+
+A working document on texture analysis
+
+- focus is on characterizing local spatial patterns in brain images that correlate with conditions of interest
+  (age, disease, cognitive function, etc.)
+
+- some categories of measures:
+
+    > histogram-based: no dependence on spatial structure, just the distribution of values locally
+
+    > grey-level co-occurrence: based on probability of neighbouring voxels having certain value pairs
+
+- histogram approach can use either raw values, globally-normalized values (relative to whole image)
+  or locally normalized values (relative to texture patch)
+  raw values is risky -- results depend on overall scaling which can be scanner dependent, sequence dependent, etc.
+  global scaling can be ok -- needs to correct for intensity non-uniformity issues
+  local scaling can be ok -- but cannot detect deviations from normal that are >patch size
+
+- GLCA approach usually assumed local normalization as default
+
+- run-length matrix ... probably best to locally normalize too?
+- 
+
+- want to capture visibly identifiable aspects of texture for ease of interpretation,
+  (c.f. Rao & Lohse / Tamun)
+  e.g., granularity (coarseness/contrast)
+        repetitiveness (periodicity/randomness)
+        directionality (anisotropy)
+
+  [granularity]
+  > Haralick "Contrast": intensdiffs weighted by prob.; bigger C when
+    larger intensdiffs are observed
+  * sharp transitions (e.g. hypointense spots)
+    or conversely, blurring (e.g., edema)
+  > {correlation} *should* give you the inverse -- higher corr if transitions 
+    are mostly to similar values
+
+  [repetitiveness/homogeneity]
+--- homogeneity = only a few gl values in patch, this gives "peaked" distros"
+  > Haralick "Entropy": log-weighted sum of probs; bigger E when prob-mat is
+    "flatter", e.g. more uncertainty about what a randomly sampled value pair will be
+  > Haralick "Energy": squared sum of probs; smaller E when prob-mat is
+    "flatter", e.g. fewer peaks in distribution
+  * these two give VERY similar but not identical results (rho < -0.95 in sim.)
+  * entropy has classically been used to index the regularity of processes
+  > Max-Prob can be seen as similar... asks to what extent is there a dominant
+    co-occurrence pattern
+  * similar but not overwhelminglyt so (rho </> -0.70/0.70 in sim.)
+
+
+
+  [directionality...?]
+  > to some extent, variance in Haralick features across directions
+    will capture this ... not a "pure" index of anisotropy tho
+
+  > absolute spatial gradient could capture this...
+    gets you the "sharpness" of grey level transitions
+    
+
+GLCA --> contrast/corr/homog/entropy
+histo --> min/max/mean/SD/skew/kurt/SNR/pctiles
+grad-mat --> mean/var/
+runlength --> run%, long-run, grey-level distro, runlegnth distro
+

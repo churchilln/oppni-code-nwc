@@ -1,0 +1,5 @@
+
+.This directory is for "add-on" code modules that have been written by other
+ developers but are important/necessary for running oppni softare
+.Shipped versions are most likely to work with existing oppni code base,
+ newer versions might require some debugging. Caveat emptor!

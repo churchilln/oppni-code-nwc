@@ -1,0 +1,79 @@
+
+cfn.upenn.edu/perfusion/sequences.htm >> provides access to some asl sequences and documentation
+cfn.upenn.edu/zewang/ASLtbx_manual.pdf >> good overview of implementation for ASL
+crnl.readthedocs.io/asl/index.html >> some overview of acquisition parameters and choices
+
+
+Alsop (2015). Recommended implementation of Arterial Spin-Labeled Perfusion MRI >> white paper of consensus recommendations
+Golay (2004). Perfusion Imaging Using Arterial Spin Labelling >> overview of different perfusion physics eqns.
+
+/Some notes on the pipeline for future reference
+
+-original asl pipeline went motcor --> despike --> smooth --> pefusion estimation
+-current pipeline does despiking first, but estimation is done on motcorred/smoothed data, so end result is the same
+-smoothing split into pre/post smo ... still not sure which is the best approach here
+
+
+This section will outline development process for the ASL processing pipeline:
+
+- the main goal is to adapt the (established) BOLD pipeline with minimal modification,
+  ideally leaving open the option to explore processing pipelines laterr
+- input data:
+    T1w (same), func run (same), M0 scan(s) (new!), no task design or seed region!
+- basic P0 qc cehcking / P1 populating will be preserved -- except need for M0 processing n check
+  *will take in path of M0; generally, this will be distinct since it has different pulse sequence from perf-weighted
+  *can also allow for empty M0 I suppose -> this will allow only relative perf weighting!! 
+- for the main processing pipeline:
+    > structural processing (AMASK,ASEG,AWARP) is unchanged from BOLD
+    > will then include ~DESPIKE (modified), PRESMO (new-pre-smoothing step), [*perf estimation here*], FWARP (only push M0, rCBF, aCBF maps), SMOOTH
+    ? OR -0-> PRESMO, FWARP (on func), PERF_EST (+applywarp), SMOOTH
+- PERF_MODEL will be included as option (try different setups), but included as P2 ("post-align") step to avoid redoing FWARP
+
+- for perfusion estimation, inclined to handle on case-by-case basis:
+    > PASL-2D handled in same way as old athlete data; imported and modified from [https://www.cfn.upenn.edu/zewang/ASLtbx_manual.pdf]
+    > PCASL-3D as new addition
+- take in ACQ_SCHEME = [PASL-2D / PCASL-3D / etc.],  mandatory; other optional args for kinetic model
+- keep TR_MSEC information in input fileas usual
+
+* recall that FIXED aspects of acquisition (TR, etc) go in input file
+  param file should only contain pipeline-contingent choices (e.g. final vox resolution)
+
+- we will import the same structural processing pipeline
+> PERF_MODEL will be treated as ana analysis model! but automaticall carried through warp 'n' smo steps after running....
+
+---------
+
+REVISED PLAN:
+
+raw --> [despike] --> [motcor] --> [presmo] --> [cbf-estim] --> [fwarp] --> [smooth]
+
+NOTES
+    -despike will admit standard BOLD estimators but also use ASL-specific ones
+    -motcor is now split off from fwarp, since you need to do perfusion estimation in native space but
+     bad alignment to m0ref will screw up aCBF estimates
+    -presmo option to improve estimation
+    -fwarp is now modified to exclude 3dvolreg/motcorr component
+
+    >"motcor" to "m0align"
+    >"fwarp" to "m0fwarp"
+
+--------------
+
+all of the above is fairly out of date, review and make sure of new structures before assuming anything
+
+Some NOTES:
+
+-for scrubbing/tcfilt option, error thrown if volumes trimmed out
+https://afni.nimh.nih.gov/afni/community/board/read.php?1,146771,146771
+https://github.com/afni/afni/issues/73go
+- you need to removing the NIFTI extensions from the dastaset, removes the extended header from data:
+- use the "nifti_tool" script with -rm_ext ALL arg
+per afni helpfiles:
+    "You could put "history" as a comment note in the NIFTI dataset with :
+    3dinfo -history func_slim+orig. > funchist.txt
+    nifti_tool -add_comment "file:funchist.txt" -overwrite -infiles func_slim.nii.gz
+    This kind of history won't get updated or copied by AFNI in later processing steps."
+
+-current CBF estimation code is based largely on Ze Wang ASLTBX formulation:
+https://www.cfn.upenn.edu/zewang/ASLtbx_manual.pdf
+

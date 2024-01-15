@@ -1,0 +1,5 @@
+PREFIX=sub-01 FUNC=/home/raw_data/sub-01_ses-V01_task-rest_bold.nii.gz ANAT=/home/raw_data/sub-01_ses-V01_T1w.nii.gz DROP=[3,0] ZCLIP=-57.00 TR_MSEC=2000 TPATTERN=alt+z2 SEED=/home/mydata/sinfo_neurocovid.txt
+PREFIX=sub-02 FUNC=/home/raw_data/sub-02_ses-V01_task-rest_bold.nii.gz ANAT=/home/raw_data/sub-02_ses-V01_T1w.nii.gz DROP=[3,0] ZCLIP=-57.00 TR_MSEC=2000 TPATTERN=alt+z2 SEED=/home/mydata/sinfo_neurocovid.txt
+PREFIX=sub-03 FUNC=/home/raw_data/sub-03_ses-V01_task-rest_bold.nii.gz ANAT=/home/raw_data/sub-03_ses-V01_T1w.nii.gz DROP=[3,0] ZCLIP=-57.00 TR_MSEC=2000 TPATTERN=alt+z2 SEED=/home/mydata/sinfo_neurocovid.txt
+PREFIX=sub-04 FUNC=/home/raw_data/sub-04_ses-V01_task-rest_bold.nii.gz ANAT=/home/raw_data/sub-04_ses-V01_T1w.nii.gz DROP=[3,0] ZCLIP=-57.00 TR_MSEC=2000 TPATTERN=alt+z2 SEED=/home/mydata/sinfo_neurocovid.txt
+PREFIX=sub-05 FUNC=/home/raw_data/sub-05_ses-V01_task-rest_bold.nii.gz ANAT=/home/raw_data/sub-05_ses-V01_T1w.nii.gz DROP=[3,0] ZCLIP=-57.00 TR_MSEC=2000 TPATTERN=alt+z2 SEED=/home/mydata/sinfo_neurocovid.txt

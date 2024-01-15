@@ -1,0 +1,63 @@
+
+. processing modules should allow for easy plug-in of generic alternatives
+. for expediency, currently just matlab functions with a specific I/O formatting that
+  all modules of same type should share. 
+. module names should have 3-letter codes; secondary arg should go into module
+
+CODES
+
+AF#=AFNI
+FL#=FSL
+FS#=Freesurfer
+AN#=ANTS
+OP#=oppni, in-house code
+
+* when coding w/ temporary outputs, dump to local subdir
+    "opptmp_
+
+* all code has minimal set of outputs generated, some can create extra derivatives,
+  they may become mandatory later on...
+
+AMASK
+    ( <anatomical input>, <reference dataset>, <output directory> )
+    
+    -given minimally processed (neck removed, deobliqued) anatomic
+    -and reference template, in the 5-brick AFNI compatible format
+    -and an output directory
+    >in "odir" creates the file "anatBrainMask.nii" in the output directory
+
+ASEG
+    ( <anatomical input>, <brain mask>, <output directory> )
+
+    -given minimally processed (neck removed, deobliqued) anatomic
+    -and a binary brain mask
+    -and an output directory
+    >in "odir" creates segmentations anat_seg_CSF, anat_seg_GM, anat_seg_WM
+
+AWARP
+    ( <anatomical input>, <brain mask>, <reference dataset>, <output directory> )
+
+    -given minimally processed (neck removed, deobliqued) anatomic
+    -and a binary brain mask
+    -and reference template, in the 5-brick AFNI compatible format
+    -and an output directory
+    >in "odir" creates a skull-stripped, tidied up image "anat_proc.nii", skull-stripped version "anat_procss.nii", fully warped image "anat_warped.nii" and corresponding mask "anatBrainMask_warped.nii"
+    >creates requisite warp/align files in prespecified format in "odir" ~ needs to be consistent for a given alignment modality
+        e.g., for AFNI-style alignment, creates the anatQQ_WARP, anatQQ.aff12.1D successive nl/aff warps to template space
+
+DESPIKE
+    >in "odir" creates <prefix>_despike.nii; (optional-AF1) a <prefix>_despike_dat.mat
+RICOR
+    >in "odir" creates <prefix>_ricor.nii; ???
+TSHIFT
+    >in "odir" creates <prefix>_tshift.nii; ???
+
+FWARP
+    >in "odir1" creates <prefix>_mask.nii (func mask); <prefix>_motref.nii (reference volumee for alignment); <prefix>_motref_masked.nii (masked ref volume)
+    >and in "odir1" <prefix>_motcor.nii plus <prefix>_mpe (motion corrected data; rigid-body movement params as Tx6 matrix)
+    >and in "odir2" <prefix>_warped.nii (fully aligned to template)
+    >in "odir1" creates requisite warp/align files in format of alignment package
+        e.g., for AFNI-styles, creates 3 relevant files
+            <prefix>_motmat.1D: individual rigid-body displacements from reference
+            anat_procss_alj_mat.aff12.1D: alignment of anatomic-to-func
+            <prefix>.affwarp.1D: net affine alignment of motion+e2a+a2t

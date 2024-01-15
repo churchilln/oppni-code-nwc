@@ -1,0 +1,33 @@
+
+========================
+IN PROGRESS
+========================
+
+-this is just a file to capture miscellaneous stuff relevant to code, esp works in progress 
+
+--------------------------------------
+SUSCEPTIBILITY, DISTORTION AND DROPOUT
+--------------------------------------
+
+- *really* hard to de-distort correctly unless you already have the warp field
+- algorithmic approaches tend to over-warp to fit (And are a bit risk to mess up the stuff that is already warped fine)
+
+- for ants-based alignment of epi/b0 to t1, try to match intensity distros.
+  set T1' = [(t1max - t1min)/(b0max - b0min)]*(-T1orig + t1max)
+- "antsRegistrationSyN.sh -d 3 -f T1_inverse.nii -m b0_brain.nii -o b0tot1 -t s"
+   ...-t gives rig+aff+nonlin
+- can also try "antsIntermodalityIntrasubject.sh -d 3 -i b0_brain.nii -r T1_ss.nii -x T1_ss.nii -w template -o b0tot1smol -t 2
+  ...-t gives type-2, initial rigid registraiton, then small nonlinear deform regist
+
+- distortion shifts relative position as a function of readout position,
+  oriented along phase-encod direction
+- displacees signal, can be recovered if deforemation is estimable
+
+- dropout occurs in areas of mixed mag susceptibility, altering effective local b0
+- can cause *irrecoverable* signal loss
+- esp. an issue near temporal poles, ofc, brainstem, for conventional EPI readout
+- best practise here is just accept presence of dropout; exclude regions(?)
+- you can warp existing image to patch over this, but you are "smearing" from other voxels
+  to cover ... not reflective of actual local signal
+- for this reason, need to be cautious with suscpt unwarping too!
+

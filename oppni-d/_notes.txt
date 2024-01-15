@@ -1,0 +1,84 @@
+
+To integrate:
+
+> hook up code to generate standard dti metrics + optional dki / noddi stuff
+
+> implement warping protocol
+
+> setup checks for QC, including
+    a) validity of b0 reference volumes -- not outliers or corrupted by junk
+    b) whether topup was successful in reducing distortion
+    c) quality of brain mask
+    d) presence of slice dropout and/or slice-wise motion
+    e) post-eddy reduction in variance
+
+> implement b0-based normalization of signal:
+    (a) global per shell
+    (b) global over time
+    (c) global over space and time
+
+> integrate PCA-based denoising of mrtrix
+
+
+
+-------------------------
+Current workflow protocol (needs documenting):
+
+
+    >> pre-qc review of b0 reference files manually
+       . checks whether base reference for topup/alignment is ok. Otherwise, will need special arg to replace with alternate b0 scan (if available!)
+       . grading checks include lots of zig-zag / dropped slices / general weirness indicating big movements or scanner artifact
+       . use viewer to inspect, put into 
+
+    >> QC, first stage: in your outputs, P0 script will produce a QC folder, within fmri_proc/_group_level/QC
+       in it, look for the qc.compat folder. This stage does a basic check to make sure all of your data are compatible for analysis
+       with similar basic acquisition parameters (resolution, field of view, orientation, etc.)
+       . located in directory <output directory>/_group_leve/qc.compat
+       . skim the qc0_table_anat.txt, qc0_table_func.txt files to make sure things look sensible
+       . check the qc0_table_func_outliers.txt and qc0_table_anat_outliers.txt files to see if anyone was an outlier (deviating from the group median by >10%)
+         such outliers may or may not be acceptable, depending on the nature of your study (e.g., these kinds of outliers will be more common in multi-site / long-running studies)
+
+
+- if topup references have lots of motion, it will heavily distort results; look for telltale
+  "zigzag" edges on brain. A bit issue with particular groups, e.g. children + older adults
+- topup can correct for small movements betwen volumes, but cannot handle big motion. 
+  at least 3 volumes recommended per PE-direction to increase chances of good results
+- you can then pick the "best-looking" one from each dataset
+- first volume of topup should also be first b0 volume of your diffusion dataset, followed by
+  alt-dir one; because this ensures field map is in correct space, as this will also be your default
+  reference volume for eddy
+- if your best topup/eddy reference is *not* the first one, use fslroi+fslmerge to reorganize the run
+[https://www.jiscmail.ac.uk/cgi-bin/webadmin?A2=FSL;b4da53ac.1703]
+
+- preexisting dti qc protocol QUAD [https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6264528/]
+- measures:
+    >volume-to-volume motion (using mpes)
+    >within-volume motion (using mpes iwth higher mporder)
+    >eddy distortions (omputing the standard deviation of the three coefficients of the first order terms across the whole acquisition)
+    >susceptibility distortions (tandard deviation of voxel displacement values within the brain mask)
+    >outlier density (computing the percentage of slices classified as outliers per volume and across the whole dataset)
+  plus:
+    >When multiple b0 volumes (i.e., volumes with no diffusion-weighting) have been acquired, the voxel-wise signal-to-noise ratio (SNR)
+    >voxel-wise angular contrast-to-noise ratio (CNR) image as the ratio of the standard deviation of the predicted signal and the standard deviation of the residuals. Both standard deviations are computed across all the sampled directions sampled on the same b-value shell. A summary CNR measure is then calculated as the average CNR for each b-shell across all the voxels within a user-specified brain tissue mask
+
+- normalization/rescaling based on b0 values is often recommended [https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3720813/]
+
+- bias field correction is also an option [https://mrtrix.readthedocs.io/en/0.3.16/workflows/DWI_preprocessing_for_quantitative_analysis.html]
+
+- general HCP workflow in code [https://github.com/Washington-University/HCPpipelines/tree/master/DiffusionPreprocessing/scripts]
+
+Some other pipeline potential additions:
+
+1. "censor" equivalent in dwi pipeline (looking for slice- and gradient-specific effects).
+   Not clear how it performs against eddy-based GP interpolation
+2. RESTORE as method of estimation for DTI parameterse that is more robust to noise
+   (not relevant for higher-order models e.g. noddi)
+3. 3d slicer: denoising using rician lmmse filter
+(also nb: slicer has ROBEX)
+4. b0 to t1 alignment nonlinear (in cases where topup cannot be applied) ... see ENIGMA protocol
+5. determination of a baseline b0 for various purposes...
+   can be done via iterative averaging (starting w mindisp volume?); use of a single ref; getting min-dist ref relative to gradient images
+
+* should list multiple shells in increasing order of b-value by convention
+* specified diff_fwd and diff_rev file lists, pe_fwd and pe_rev phase encode directions
+* rev_mode = none (no reverse direction) / ref (only b0 reference avaiulable) / full (also diffusion encoding directions)

@@ -1,0 +1,6 @@
+
+.This folder is a "special" section for scripts and modules that are shared
+ across different versions of oppni (ie for different mri pulse sequence types)
+."shared" includes pipeline specific scripts, "group_level" includes 
+ scripts for conducting post-hoc group level analyses
+
