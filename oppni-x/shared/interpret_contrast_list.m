@@ -101,7 +101,8 @@ for nr = 1:InputStruct.N_func
             task_info.cond(i).duration(ind_temp) = [];
             % catch cases where this this step strips off all valid onsets
             if( isempty(task_info.cond(i).onset) ) 
-                InputStruct.frun(nr).Input_nifti_filename,
+                InputStruct.frun(nr).FUNC_filename,
+                InputStruct.frun(nr).TASK_filename,
                 error(['condition "',task_info.cond(i).label,'" has exclusively blocks that start before the start/after the end of the fMRI run! check your onsets!!']); 
             end
         end

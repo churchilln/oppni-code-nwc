@@ -5,7 +5,7 @@ function out = spike_estimator( volname, maskname, mpename, outprefix, WSZ, BIDI
 %
 
 % load and mean-center the mpes
-mpemat = load(mpename);
+mpemat = load(mpename,'-ascii');
 mpemat = bsxfun(@minus,mpemat,mean(mpemat));
 
 % load and mean-center the fmri data

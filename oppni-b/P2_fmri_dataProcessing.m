@@ -496,7 +496,7 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
         end
     end
 
-% %     % SCRATCH -- heeextra step: effex maps
+% %     % SCRATCH -- extra step: effex maps
 % %     mkdir(sprintf('%s/effex',opath2f));
 % %     if ns==20
 % %         return;
@@ -508,6 +508,71 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
 % %     map(~isfinite(map))=eps;
 % %     mosaic_viewer( map, 3, [], [], 'jet', 1 )
 end
+
+%% Checkpoint
+
+% check for all completed base-proccing of participants before masking can
+% start (in case only a subset were run):
+nrmax = 0;
+for ns=1:numel(subject_list)
+    % check existence of subject specific struct file
+    if exist(fullfile( outpath,subject_list{ns},'InputStruct_ssa.mat'),'file')  
+        load( fullfile( outpath,subject_list{ns},'InputStruct_ssa.mat') )
+    else
+        error('cannot find Input struct file for subject: %s \n');
+    end
+    nrmax = max([nrmax InputStruct_ssa.N_func]);
+end
+complet_mat = NaN*ones(numel(subject_list),nrmax);
+
+for ns=1:numel(subject_list)
+    
+    % check existence of subject specific struct file
+    if exist(fullfile( outpath,subject_list{ns},'InputStruct_ssa.mat'),'file')  
+        load( fullfile( outpath,subject_list{ns},'InputStruct_ssa.mat') )
+    else
+        error('cannot find Input struct file for subject: %s \n');
+    end
+
+    % quick formatting stuff, again assuRImes that directory structure was already constructed in "P0" pipeline step 
+    opath0 = fullfile(outpath,InputStruct_ssa.PREFIX,'rawdata');
+    %
+    opath1a = fullfile( outpath, InputStruct_ssa.PREFIX,'anat_proc');
+    opath2a = fullfile( opath1a,sprintf('subpipe_%03u',    PipeStruct_aug.pipe_idx.Warp));
+    opath3a = fullfile( opath2a,sprintf('seg_subpipe_%03u',PipeStruct_aug.pipe_idx.Seg ));
+    %
+    opath1p = fullfile(outpath,InputStruct_ssa.PREFIX,'phys_proc');
+    %
+    opath1f = fullfile(outpath,InputStruct_ssa.PREFIX,'func_proc_p1');
+    opath2f = fullfile(opath1f,sprintf('subpipe_%03u',PipeStruct_aug.pipe_idx.P1));
+    opath3f = fullfile(opath2f,sprintf('seg_subpipe_%03u',PipeStruct_aug.pipe_idx.Seg ));
+    %
+    opath4f = fullfile(outpath,InputStruct_ssa.PREFIX,'func_proc_p2',['pipe_',PipeStruct_aug.PNAME{1}]); 
+
+    for nr=1:InputStruct_ssa.N_func
+        complet_mat(ns,nr)=2; %--fully processed already
+        if ~exist( [opath4f,'/func',num2str(nr),'_fullproc.mat'],'file') %only do runs with missing outputs
+            complet_mat(ns,nr)=1; %--processed up to masking
+            if ~exist(sprintf('%s/postwarp/func%u_warped_smo.nii.gz',opath2f,nr),'file')
+                complet_mat(ns,nr)=0; %--not processed
+            end
+        end
+    end
+end
+if sum(complet_mat(:)==0)>0
+    
+    disp('not all subjects processed enough to mask. Halting for now!');
+    disp('Unfinished:')
+    ix = find(sum(complet_mat==0,2)>0);
+    for i=1:numel(ix)
+        ix2 = find( complet_mat(ix,:)==0);
+        for j=1:numel(ix2)
+            fprintf('%s -- run %u\n',subject_list{ix(i)},ix2);
+        end
+    end
+    return;
+end
+
 
 %% INTERMEZZO-ANATOMICAL: getting group-level maps
 
@@ -629,8 +694,8 @@ else
     Vo = load_untouch_niiz(sprintf('%s/anat_warped.nii.gz',opath2a)); %***%
     
     % here is our checklist: subdirs and files
-    chklist_a = {'masks',              'brain_maps',     'brain_maps',    'brain_maps',   'brain_maps',  'brain_maps',  'masks'}
-    chklist_b = {'anat_brain_mask_grp','anat_pBRAIN_grp','anat_brain_grp','anat_pCSF_grp','anat_pGM_grp','anat_pWM_grp','anat_sulcal_mask_grp'}
+    chklist_a = {'masks',              'brain_maps',     'brain_maps',    'brain_maps',   'brain_maps',  'brain_maps',  'masks'};
+    chklist_b = {'anat_brain_mask_grp','anat_pBRAIN_grp','anat_brain_grp','anat_pCSF_grp','anat_pGM_grp','anat_pWM_grp','anat_sulcal_mask_grp'};
       
     for k=1:numel(chklist_a)
         fileimp = [outpath,'/_group_level/',chklist_a{k},'/pipe_',PipeStruct_aug.PNAME{1},'/',chklist_b{k},'.nii'];
@@ -1181,8 +1246,8 @@ for ns=subj_list_for_proc % step through func-proc (block-2)
             maskSsub = maskS;
         end
         
-
         % extract and put the runs into cell array
+        clear volcel;
         for nr=1:InputStruct_ssa.N_func
            x=load([opath4f,'/func',num2str(nr),'_fullproc.mat']);
            volcel{nr} = x.volmatF(kepix_vga,:);

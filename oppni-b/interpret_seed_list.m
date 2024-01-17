@@ -82,7 +82,12 @@ if analysis_model.uses_roifile>0
     for i=1:numel(ca)
         % port over entire seed struct, with indexing...
         ix = find( strcmpi(ca{i}, keepfields) );
-        seed_info.contrast(i) = seed_info.seed(ix);
+        %-- 
+        seed_info.contrast(i).label    = seed_info.seed(ix).label;
+        seed_info.contrast(i).location = seed_info.seed(ix).location;
+        seed_info.contrast(i).type     = seed_info.seed(ix).type;
+        %--
+        %seed_info.contrast(i) = seed_info.seed(ix);
         seed_info.contrast(i).c1 = ix;
 
         if numel(seed_info.contrast(i).c1) ~= 1

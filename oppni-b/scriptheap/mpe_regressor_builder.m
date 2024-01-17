@@ -10,7 +10,7 @@ else
     end
     
     % load the file
-    X = load(mpefile);
+    X = load(mpefile,'-ascii');
     % mean-centering for quadratic case (doesnt matter elsewhere really)
     X = bsxfun(@minus,X,mean(X,1));
 

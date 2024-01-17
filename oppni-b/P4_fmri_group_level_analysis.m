@@ -1,4 +1,4 @@
-function P4_group_level_analysis2( inputfile, pipelinefile, paramlist, outpath, param, volno, design_mat, analysis_model, model_contrast, THRESH_METHOD, out_folder_name, censor )
+function P4_fmri_group_level_analysis( inputfile, pipelinefile, paramlist, outpath, param, volno, design_mat, analysis_model, model_contrast, THRESH_METHOD, out_folder_name, censor )
 
 % Input:
 %      inputfile : string, giving name of input textfile listing data to process
@@ -45,7 +45,7 @@ for i=1:numel(subject_list)
         fi = fieldnames( x.out_analysis.image );
         if sum(strcmpi( param, fi))>0
             param_type = 'image';
-            matdims = [size(x.out_analysis.mat2d.(param),1) 1];
+            matdims = [size(x.out_analysis.image.(param),1) 1];
         else
             fi = fieldnames( x.out_analysis.mat2d );
             if sum(strcmpi( param, fi))>0
@@ -148,10 +148,10 @@ if strcmpi( param_type,'image' )
         tmp(tmp>0) = out_analysis.tstat(:,i);
         TMPVOL(:,:,:,i) = tmp;
     end
-    nii=M1;
+    nii=MB;
     nii.img = TMPVOL;
     nii.hdr.dime.datatype = 16;
-    nii.hdr.hist = M1.hdr.hist;
+    nii.hdr.hist = MB.hdr.hist;
     nii.hdr.dime.dim(5) = size(out_analysis.tstat,2);
     save_untouch_niiz(nii,[out_folder_name,'/tmaps_unthresh.nii']); 
     
@@ -162,10 +162,10 @@ if strcmpi( param_type,'image' )
         tmp(tmp>0) = out_analysis.tstat_p(:,i);
         TMPVOL(:,:,:,i) = tmp;
     end
-    nii=M1;
+    nii=MB;
     nii.img = TMPVOL;
     nii.hdr.dime.datatype = 16;
-    nii.hdr.hist = M1.hdr.hist;
+    nii.hdr.hist = MB.hdr.hist;
     nii.hdr.dime.dim(5) = size(out_analysis.tstat,2);
     save_untouch_niiz(nii,[out_folder_name,'/pmaps_unthresh.nii']); 
     
@@ -195,10 +195,10 @@ if strcmpi( param_type,'image' )
             tmp(tmp>0) = numaps(:,i);
             TMPVOL(:,:,:,i) = tmp;
         end
-        nii=M1;
+        nii=MB;
         nii.img = TMPVOL;
         nii.hdr.dime.datatype = 16;
-        nii.hdr.hist = M1.hdr.hist;
+        nii.hdr.hist = MB.hdr.hist;
         nii.hdr.dime.dim(5) = size(out_analysis.tstat,2);
         save_untouch_niiz(nii,[out_folder_name,'/tmaps_',THRESH_METHOD{1},'.nii']); 
     end
@@ -235,7 +235,7 @@ elseif strcmpi( param_type,'mat2d' )
         sum( numaps ~= 0 ),
         tmaps_thresh = numaps;
         
-        for i=1:size(tmaps,2)
+        for i=1:size(numaps,2)
             tmap2d_thresh = reshape(tmaps_thresh(:,i),matdims);
             writematrix(tmap2d_thresh,[out_folder_name,'/tmap2d_thresh_',num2str(i),'_',THRESH_METHOD{1},'.txt']); 
         end
@@ -263,7 +263,7 @@ end
     end
     %--3
     if ~isempty(numaps)
-        for i=1:size(tmaps,2)
+        for i=1:size(numaps,2)
             if sum(numaps(:,i)<0)>1
                 score_arr( :, 2*(i-1)+1 ) = mean( datamat(numaps(:,i)<0,:),1 );
             end
