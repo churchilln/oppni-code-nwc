@@ -30,7 +30,7 @@ end
 % ANALYSIS/CONTRAST/VOXRES/TEMPLATE --> the usual
 % KM.. --> kinetic modelling parameters
 steplist = {'PERF_MODEL','SUBTRACT_TYPE','ANALYSIS','CONTRAST','VOXRES','TEMPLATE','INIMOT','ROIMASK','KM_BLOODT1','KM_BLOODT2S','KM_PARCOEF','KM_PDRAT','KM_LABEFF','KM_QTI'};
-mandatory= [ 1,          1,              1,         1,         1,       1,         1,       1,        0,           0,            0,           0,         0,          0,      ];
+mandatory= [ 1,          1,              1,         1,         1,       1,         0,       0,        0,           0,            0,           0,         0,          0,      ];
 
 ileft  = strfind( paramstring, '[' );
 iright = strfind( paramstring, ']' );

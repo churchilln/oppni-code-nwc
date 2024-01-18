@@ -62,6 +62,17 @@ if( ~isempty(strfind(ParamStruct_aug.CONTRAST,',' )) )
     analysis_struct.num_comp = 'multi_component';
 end
 
+
+% Now configuring param defaults if unspecified
+%
+if ~isfield(ParamStruct_aug,'INIMOT')
+    ParamStruct_aug.INIMOT='OP1';
+end
+if ~isfield(ParamStruct_aug,'ROIMASK')
+    ParamStruct_aug.ROIMASK='OP1';
+end
+
+
 % list of subjects for constructing group masks
 IMPORT_MASKFILES=0;
 if isempty(mask_subj_idxes)

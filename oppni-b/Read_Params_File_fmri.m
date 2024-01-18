@@ -33,7 +33,7 @@ for(s=1:length(steplist))
     iStep = strfind( upper(paramstring), strcat(steplist{s},'=') );
     if isempty(iStep)
         if mandatory(s)==1
-        error('Param field %s has not been defined, please check the spelling!\n This field must be specified to continue\n',steplist{s});
+            error('Param field %s has not been defined, please check the spelling!\n This field must be specified to continue\n',steplist{s});
         elseif mandatory(s)==0
             warning('Param field %s has not been defined but is optional, please check the spelling!\n Will use defaults\n',steplist{s});
         else
