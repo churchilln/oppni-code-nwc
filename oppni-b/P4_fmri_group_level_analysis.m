@@ -124,9 +124,10 @@ if strcmpi( analysis_model, 'GLM' )
     %
     ixdrop_XD = unique( [ixdrop_D(:); ixdrop_X(:)]);
     fprintf('discarding total: %s\n',numel(ixdrop_XD));
-    %
-    D(:,ixdrop_XD) = [];
-    X(ixdrop_XD,:) = [];
+%     %
+%     D(:,ixdrop_XD) = [];
+%     X(ixdrop_XD,:) = [];
+    
 
     % checking design matrix
     fprintf('matrix condition (unnormed): %f\n',cond(X));
@@ -138,7 +139,7 @@ if strcmpi( analysis_model, 'GLM' )
     kurtosis(X),
 
 
-    out_analysis = GLM_gl( datamat(:,censor==0), Xdes_new(censor==0,:) );
+    out_analysis = GLM_ph( datamat(:,censor==0), Xdes_new(censor==0,:) );
     
 elseif strcmpi( analysis_model, 'Ttest' )
     
@@ -156,9 +157,9 @@ elseif strcmpi( analysis_model, 'Ttest' )
     end
 
     if numel(Xdes_new)>1
-    out_analysis = Ttest_gl( datamat(:,censor==0), Xdes_new(censor==0,:) );
+    out_analysis = Ttest_ph( datamat(:,censor==0), Xdes_new(censor==0,:) );
     else
-    out_analysis = Ttest_gl( datamat(:,censor==0), Xdes_new );
+    out_analysis = Ttest_ph( datamat(:,censor==0), Xdes_new );
     end
 end
 
