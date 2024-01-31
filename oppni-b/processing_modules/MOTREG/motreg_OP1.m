@@ -1,4 +1,7 @@
-function [Xreg,stat] = motreg_OP1( mpefile, modelstr, decompstr )
+function [Xreg,stat] = motreg_OP1( mpefile, ParamCell )
+
+modelstr = ParamCell{1}; 
+decompstr = ParamCell{2};
 
 stat = [];
 

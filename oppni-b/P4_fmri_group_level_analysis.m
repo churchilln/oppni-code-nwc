@@ -1,13 +1,13 @@
 function P4_fmri_group_level_analysis( inputfile, pipelinefile, paramlist, outpath, param, volno, design_mat, analysis_model, model_contrast, THRESH_METHOD, out_folder_name, censor )
-
+%
 % Input:
 %      inputfile : string, giving name of input textfile listing data to process
 %      pipelinefiles : string, giving name of pipeline textfile specifying which pipeline steps to apply to the data
 %      paramlist : string, giving name of parameter file specifying special arguments to use in pipelines
 %      outpath : string, specifying destination directory for processed outputs
 %
-%            volno: index number among contrasts, if multiple ones
-%                   can be either single value or pair of values ( subtractive contrast of volno(2)-volno(1) )
+%            volno: index number among contrasts to analyze, if multiple ones
+%                           or contrast vector
 %       design_mat: design matrix in table format; should have header w variable names
 %       analysis_model: string specifying analysis model ('Ttest' or 'GLM')
 %      model_contrast: string specifying contrast, based on design matrix fields
@@ -59,7 +59,11 @@ for i=1:numel(subject_list)
 
     if strcmpi( param_type,'image' )
         if isnumeric(volno)
-            datamat(:,i) = x.out_analysis.image.(param)(:,volno);
+            if numel(volno)==1
+                datamat(:,i) = x.out_analysis.image.(param)(:,volno);
+            else
+                datamat(:,i) = x.out_analysis.image.(param) * volno(:);
+            end
         else
             volno = regexp( volno,'-','split');
             bb = str2num( strrep(volno{1},'+',',') );
@@ -109,6 +113,31 @@ if strcmpi( analysis_model, 'GLM' )
         if isempty(ix) error('cannot find variable "%s" in design matrix!\n',model_contrast{i}); end
         Xdes_new(:,i) = Xdes(:,ix);
     end
+
+    D = datamat(:,censor==0);
+    % check for bad/missing values
+    ixdrop_D = mean(~isfinite(D),1)>0.10;
+    fprintf('number of volumes with more than 10% missing data: %s\n',numel(ixdrop_D));
+    X = Xdes_new(censor==0,:);
+    ixdrop_X = ~isfinite(mean(X,2));
+    fprintf('number of design rows with missing data: %s\n',numel(ixdrop_X));
+    %
+    ixdrop_XD = unique( [ixdrop_D(:); ixdrop_X(:)]);
+    fprintf('discarding total: %s\n',numel(ixdrop_XD));
+    %
+    D(:,ixdrop_XD) = [];
+    X(ixdrop_XD,:) = [];
+
+    % checking design matrix
+    fprintf('matrix condition (unnormed): %f\n',cond(X));
+    fprintf('matrix condition (normed): %f\n',cond(X./sqrt(sum(X.^2,1))));
+    % checking for outliers, design matrix
+    fprintf('skewness of cols:\n');
+    skewness(X),
+    fprintf('kurtosis of cols:\n')
+    kurtosis(X),
+
+
     out_analysis = GLM_gl( datamat(:,censor==0), Xdes_new(censor==0,:) );
     
 elseif strcmpi( analysis_model, 'Ttest' )

@@ -1,4 +1,10 @@
 
+Modules will have a fixed format, with final field representing suppelmental args,
+cell array of arbitrary length --> alows for "generic" modules with variable
+number of settable params. Appplies to all modules atm, whether or not they currently
+have such options
+
+
 . processing modules should allow for easy plug-in of generic alternatives
 . for expediency, currently just matlab functions with a specific I/O formatting that
   all modules of same type should share. 

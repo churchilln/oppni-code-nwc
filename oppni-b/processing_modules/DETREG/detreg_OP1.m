@@ -1,4 +1,6 @@
-function [Xreg,stat] = detreg_OP1( ord, Nt, TR_MSEC )
+function [Xreg,stat] = detreg_OP1( Nt, TR_MSEC, ParamCell )
+
+ord = ParamCell{1};
 
 if nargin<3
     TR_MSEC = NaN;

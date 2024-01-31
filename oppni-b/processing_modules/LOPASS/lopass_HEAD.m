@@ -1,11 +1,12 @@
-function output = lopass_HEAD()
-
-%------------------ Model Attributes (mandatory fields) ------------------%
-output.attributes.model_name    = 'LOPASS';
-output.attributes.pipe_stage    = 'P2';
-output.attributes.description   = 'low-pass filtering of functional data - removing high-freuqency fluctuations';
-output.attributes.extra_fields_number    = 0;
-output.attributes.extra_fields_descript  = [];
-
-disp('no inputs - returning attributes');
-%-------------------------------------------------------------------------%
+%
+% -------------------------------------------------------------------------
+%          module: LOPASS
+% -------------------------------------------------------------------------
+%  pipeline stage: P2
+%      applied to: fMRI data
+%         summary: filtering of high-frequency physio signal - correction for physio noise 
+%   function call: datamat_filt = roireg_<name>( datamat, TR_MSEC, ParamCell )
+%                        datamat = matricized functional data, as a voxel x time matrix 
+%                        TR_MSEC = repetition time, in milliseconds 
+%                     (ParamCell = supplemental parameters)
+%

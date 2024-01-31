@@ -1,4 +1,4 @@
-function amask_AN1(Adataset, Basedset, odir)
+function amask_AN1(Adataset, Basedset, odir, ParamCell)
 %
 % .ANTS-based anatomical brain masking
 

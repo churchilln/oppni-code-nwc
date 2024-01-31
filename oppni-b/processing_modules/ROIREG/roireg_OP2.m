@@ -1,6 +1,11 @@
-function [Xreg,stat] = roireg_OP2( functional_run, roi_paths, modelstr, decompstr )
+function [Xreg,stat] = roireg_OP2( functional_run, roi_paths, ParamCell )
 %
-% updated version --> does either IND or GRP pca of regions
+% ParamCell = {'WM5'/'WM2+CSF2+tSD1','IND+PCA'/'GRP+PCA'}
+%
+% updated version --> does either IND or GRP pca of full tissue territory with multiple components chooseable 
+
+modelstr = ParamCell{1}; 
+decompstr = ParamCell{2};
 
 maskpath = roi_paths{1}; % expect : <maskpath>/func_<type>_mask_grp.nii
 parcpath = roi_paths{2}; % expect : <parcpath>/Ugrp_<type>.nii

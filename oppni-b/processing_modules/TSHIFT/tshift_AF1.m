@@ -1,4 +1,4 @@
-function tshift_AF1( Funcfile, prefix, odir, tpatt )
+function tshift_AF1( Funcfile, prefix, odir, tpatt, ParamCell )
 
 % odir => sprintf('%s/prewarp',opath2f)
 % prefix => sprintf('func%u',nr)

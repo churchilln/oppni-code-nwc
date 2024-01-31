@@ -1,11 +1,12 @@
-function output = detreg_HEAD()
-
-%------------------ Model Attributes (mandatory fields) ------------------%
-output.attributes.model_name    = 'DETREG';
-output.attributes.pipe_stage    = 'P2';
-output.attributes.description   = 'detrending regression - removal of low-frequency signal fluctuations';
-output.attributes.extra_fields_number    = 1;
-output.attributes.extra_fields_descript  = 'order';
-
-disp('no inputs - returning attributes');
-%-------------------------------------------------------------------------%
+%
+% -------------------------------------------------------------------------
+%          module: DETREG
+% -------------------------------------------------------------------------
+%  pipeline stage: P2
+%      applied to: fMRI data
+%         summary: regressed out signal from motion parameter estimates, correction for motion noise 
+%   function call: [Xreg,stat] = detreg_<name>( Nt, TR_MSEC, ParamCell )
+%                             Nt = number of time points in scan run
+%                        TR_MSEC = repetition time in milliseconds
+%                     (ParamCell = supplemental parameters)
+%

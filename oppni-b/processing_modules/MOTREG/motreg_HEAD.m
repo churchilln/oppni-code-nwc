@@ -1,11 +1,11 @@
-function output = motreg_HEAD()
-
-%------------------ Model Attributes (mandatory fields) ------------------%
-output.attributes.model_name    = 'MOTREG';
-output.attributes.pipe_stage    = 'P2';
-output.attributes.description   = 'motion parameter regression - removal of residual motion effects';
-output.attributes.extra_fields_number    = 2;
-output.attributes.extra_fields_descript  = 'type,order';
-
-disp('no inputs - returning attributes');
-%-------------------------------------------------------------------------%
+%
+% -------------------------------------------------------------------------
+%          module: MOTREG
+% -------------------------------------------------------------------------
+%  pipeline stage: P2
+%      applied to: fMRI data
+%         summary: regressed out signal from motion parameter estimates, correction for motion noise 
+%   function call: [Xreg,stat] = motreg_<name>( mpefile, ParamCell )
+%                      mpefile = location + name of motion parameter estimate file
+%                     (ParamCell = supplemental parameters)
+%

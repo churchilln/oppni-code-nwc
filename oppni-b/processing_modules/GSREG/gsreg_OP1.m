@@ -1,5 +1,6 @@
-function [Xreg,stat] = gsreg_OP1( datamat, modelstr )
+function [Xreg,stat] = gsreg_OP1( datamat, ParamCell )
 
+modelstr = ParamCell{1};
 stat = [];
 
 if strcmpi(modelstr,'GAV')

@@ -42,7 +42,10 @@ for(s=1:length(steplist))
     else
         bleft       = ileft (ileft >iStep);   bleft= bleft(1);
         bright      = iright(iright>iStep);  bright=bright(1);
-        pipeargs = regexp(  pipelinestring((bleft+1):(bright-1))  ,',','split');
+        pipeargs    = regexp(  pipelinestring((bleft+1):(bright-1))  ,',','split');
+        if s>1 && numel(pipeargs)==1 % second field added-
+            pipeargs{2} = [];
+        end
         if strcmpi(steplist{s},'PNAME') && numel(pipeargs)>1
             error('Pipeline step %s has multiple comma-separated arguments\n only allowed to specify one argument!',steplist{s});
         end

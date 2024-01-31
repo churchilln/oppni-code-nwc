@@ -39,11 +39,11 @@ for ir=1:Nr
     % expand case of multiparc data
     if strcmpi( seed_struc.contrast(1).type, 'multi') && size(xseed,2)==1
 
-        labvals = sort(unique(seedmat(seedmat>0)),1);
+        labvals = sort(unique(seed_struc.seedmat(seed_struc.seedmat>0)),1);
         ns2 = numel(labvals);
         xseed_new = zeros(size(xseed,1),ns2);
         for i=1:ns2
-            xseed_new(:,i) = double(seedmat==labvals(i));
+            xseed_new(:,i) = double(seed_struc.seedmat==labvals(i));
         end
         xseed = xseed_new; clear xseed_new;
     end

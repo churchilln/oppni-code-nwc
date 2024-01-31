@@ -1,6 +1,4 @@
-function out = GLMPLSboot_fancy_ph( datamat, design, yscal, xscal, contrmat )
-% allows you to take in multiple "datamat" blocks, regress and combine
-NBlok = size(datamat,3);
+function out = GLMboot_fancy_ph( datamat, design, yscal, xscal, contrmat )
 
 % 1=center, 2=unitnorm, 3=both
 if nargin<3 || isempty(yscal)
@@ -67,7 +65,7 @@ NBOOT = 2000;
         out.bsr     = mean(bsrmat,3)./std(bsrmat,0,3);
         out.bsr_p   = 2*min(cat(3,sum(bsrmat>0,3), sum(bsrmat<0,3)),[],3)./bsr;
         out.contr   = [];
-    else
+    elseif iscell(contrmat) % cell array, each row is contrast; for cth, subtract contrmat{c,2}-contrmat{c,1} 
         for c = 1:size(contrmat,1)
             b = bsrmat(:,contrmat{c,2},:);
             if contrmat{c,1}==0
@@ -76,6 +74,13 @@ NBOOT = 2000;
                 a = bsrmat(:,contrmat{c,1},:);
             end
             bcontr = mean(b,2)-mean(a,2);
+            out.bsr(:,c)   = mean(bcontr,3)./std(bcontr,0,3);
+            out.bsr_p(:,c) = 2*min(cat(3,sum(bcontr>0,3), sum(bcontr<0,3)),[],3)./bsr;
+        end
+        out.contr = contrmat;
+    else % matrix, each row givdes the contrasts
+        for c = 1:size(contrmat,1)
+            bcontr = sum( bsxfun(@times,bsrmat,contrmat(c,:)), 2);
             out.bsr(:,c)   = mean(bcontr,3)./std(bcontr,0,3);
             out.bsr_p(:,c) = 2*min(cat(3,sum(bcontr>0,3), sum(bcontr<0,3)),[],3)./bsr;
         end

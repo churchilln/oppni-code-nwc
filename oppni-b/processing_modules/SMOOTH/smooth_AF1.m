@@ -1,4 +1,6 @@
-function smooth_AF1( Funcfile, prefix, odir, fwhm )
+function smooth_AF1( Funcfile, prefix, odir, ParamCell )
+
+fwhm = ParamCell{1};
 
 % odir => opath4f
 % prefix => sprintf('func%u',nr)

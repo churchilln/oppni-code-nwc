@@ -1,4 +1,4 @@
-function datamat_filt = lopass_OP1( datamat, TR_MSEC )
+function datamat_filt = lopass_OP1( datamat, TR_MSEC, ParamCell )
 
 [Nvox Ntime] = size(datamat); % matrix dimensions
 % using simple Butterworth filter -- linear phase/ flat frequency, rolloff not great but this is tolerable for fmri

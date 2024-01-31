@@ -1,4 +1,6 @@
-function despike_OP1( Funcfile, prefix, odir, type, base )
+function despike_OP1( Funcfile, prefix, odir, base, ParamCell )
+
+type = ParamCell{1};
 
 % odir => sprintf('%s/prewarp',opath2f)
 % prefix => sprintf('func%u',nr)

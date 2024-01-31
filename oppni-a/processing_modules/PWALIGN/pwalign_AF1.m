@@ -1,4 +1,4 @@
-function pwalign_AF1( Perffile, Basefile, prefix, odir1 )
+function pwalign_AF1( Perffile, Basefile, prefix, odir1, ParamCell )
 
 % WARNING:>>> use odir2 to migrate necessary data for FWARP later?
 

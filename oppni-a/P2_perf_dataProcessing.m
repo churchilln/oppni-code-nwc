@@ -61,7 +61,8 @@ analysis_struct = check_perf_analysis_model( ParamStruct_aug.ANALYSIS );
 if( ~isempty(strfind(ParamStruct_aug.CONTRAST,',' )) )
     analysis_struct.num_comp = 'multi_component';
 end
-
+% % % check validity of pipelines --> WILL SOON DO MORE??
+pipeline_struct = check_perf_processing_model( PipeStruct_aug );
 
 % Now configuring param defaults if unspecified
 %
@@ -206,89 +207,46 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
         end
     end
 
-    % >> Pipeline Step #1: "AMASK" 
-    % >> produces a mask of brain voxels within the T1 image
-    % >> takes in raw, reoriented anatomical, outputs binary image anatBrainMask.nii
-    if strcmpi(PipeStruct_aug.AMASK{1},'AF0')
-        %do 3dskullstrip...
-        error('afni-0 currently unavailable')
-    elseif strcmpi(PipeStruct_aug.AMASK{1},'AF1')
-        amask_AF1( sprintf('%s/anat%u_2std.nii.gz', opath1a,nr), ParamStruct_aug.TEMPLATE_loc, opath2a);
-    elseif strcmpi(PipeStruct_aug.AMASK{1},'FL0')
-        %do bet...
-        error('fsl-0 currently unavailable')
-    elseif strcmpi(PipeStruct_aug.AMASK{1},'FL1')
-        %do glasser bet (script)
-        error('fsl-1 currently unavailable')
-    elseif strcmpi(PipeStruct_aug.AMASK{1},'AN1')
-        amask_AN1( sprintf('%s/anat%u_2std.nii.gz', opath1a,nr), ParamStruct_aug.TEMPLATE_loc, opath2a);
-    elseif strcmpi(PipeStruct_aug.AMASK{1},'CST')
-        % just check for custom mask
-        if ~exist( sprintf('%s/anatBrainMask.nii.gz',opath2a), 'file')
-            error('a custom "anatBrainMask.nii.gz" was expected!')
-        end
+    % >>> Spatial Masking
+    Step = 'AMASK';
+    if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+        error('cannot turn this step off!');
     else
-        error('unrecognized mask optione!')
+        % get function handle for analysis model of interest
+        currPath=pwd;                               % get current path
+        cd(pipeline_struct.(Step).filepath);               % jump to module directory
+        pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+        cd(currPath);                               % jump back to current path
+        % execute step:
+        pfun( sprintf('%s/anat%u_2std.nii.gz', opath1a,nr), ParamStruct_aug.TEMPLATE_loc, opath2a, PipeStruct_aug.(Step)(2:end) );  
     end
 
-    % >> Pipeline Step #2: "AWARP"
-    % >> creates the warp transforming anatomical images to a template.
-    % >> processes & transforms anatomical scans; combined with "ASEG" produces group tissue maps, and combined with "FWARP" transforms the functional scans
-    % >> takes in raw, reoriented anatomical, produces "anat_proc.nii" (tidied up scan), "anat_procss.nii (skull-stripped version), "anat_warped.nii" and "anatBrainMask_warped.nii"
-    % >> also produces requisite warpfiles in output dir. These specific outputs depend on the software package being used 
-    if strcmpi(PipeStruct_aug.AWARP{1},'AF1')
-        % do afni-style warping
-        awarp_AF1( sprintf('%s/anat%u_2std.nii.gz', opath1a,nr), sprintf('%s/anatBrainMask.nii.gz',opath2a), ParamStruct_aug.TEMPLATE_loc, opath2a);
-    elseif strcmpi(PipeStruct_aug.AWARP{1},'AN1')
-        %%% *** Need fixing for compatibility with param struct
-        error('ANTS warping not yet ready to go!')
-        % creating bias-corrected, skull-stripped anats
-%         unix(sprintf('antsBrainExtraction.sh -d 3 -a %s/anat%u_2std.nii -e MNI152_2009_template_SSW_0.nii -m MNI152_2009_template_SSW_mask.nii -o %s/amsk -k 1',opath1a,nr, opath2a));
-%         % params from "newAntsExample.sh"+
-%         fixd = 'MNI152_2009_template_SSW_brain.nii';
-%         movn = sprintf('%s/amskBrainExtractionBrain.nii.gz',opath2a);
-%         nomen = sprintf('%s/aln',opath2a);
-%         unix(sprintf(['antsRegistration ', ...
-%         '-d 3 ', ...
-%         '-r [ %s, %s , 1 ] ', ...
-%         '-m mattes[  %s, %s , 1 , 32, regular, 0.3 ] ', ...
-%         '-t translation[ 0.1 ] ', ...
-%         '-c [ 10000x111110x11110,1.e-8,20 ] ', ...
-%         '-s 4x2x1vox  ', ...
-%         '-f 6x4x2 -l 1 ', ...
-%         '-m mattes[  %s, %s , 1 , 32, regular, 0.3 ] ', ...
-%         '-t rigid[ 0.1 ] ', ...
-%         '-c [ 10000x111110x11110,1.e-8,20 ] ', ...
-%         '-s 4x2x1vox  ', ...
-%         '-f 3x2x1 -l 1 ', ...
-%         '-m mattes[  %s, %s , 1 , 32, regular, 0.3 ] ', ...
-%         '-t affine[ 0.1 ] ', ...
-%         '-c [ 10000x111110x11110,1.e-8,20 ] ', ...
-%         '-s 4x2x1vox  ', ...
-%         '-f 3x2x1 -l 1 ', ...
-%         '-m mattes[  %s, %s , 0.5 , 32 ] ', ...
-%         '-m cc[  %s, %s , 0.5 , 4 ] ', ...
-%         '-t SyN[ .20, 3, 0 ] ', ...
-%         '-c [ 100x100x50,-0.01,5 ] ', ...
-%         '-s 1x0.5x0vox ', ...
-%         '-f 4x2x1 -l 1 -u 1 -z 1 ', ...
-%         '-o [ %s,%s_diff.nii.gz,%s_inv.nii.gz]'],...
-%         fixd, movn, fixd, movn, fixd, movn, fixd, movn, fixd, movn, fixd, movn, nomen, nomen, nomen ));
-%         %
-%         unix(sprintf('antsApplyTransforms -d 3 -i %s -r %s -n linear -t %s1Warp.nii.gz -t %s0GenericAffine.mat -o %s_warped.nii.gz',movn,fixd,nomen,nomen,nomen));
+    % >>> Spatial Warping
+    Step = 'AWARP';
+    if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+        error('cannot turn this step off!');
     else
-        error('unrecognized warp option!')
+        % get function handle for analysis model of interest
+        currPath=pwd;                               % get current path
+        cd(pipeline_struct.(Step).filepath);               % jump to module directory
+        pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+        cd(currPath);                               % jump back to current path
+        % execute step:
+        pfun( sprintf('%s/anat%u_2std.nii.gz', opath1a,nr), sprintf('%s/anatBrainMask.nii.gz',opath2a), ParamStruct_aug.TEMPLATE_loc, opath2a, PipeStruct_aug.(Step)(2:end) );  
     end
 
-    disp('t1 mask n warp done! Now for some tissue segmentation...');
-    
-    % >> Pipeline Step #3: "ASEG"
-    % >> parcellates the processed anatomical image from "AWARP" step into CSF, GM and WM regions; combined with "ROIREG" used to regress out physiological signals
-    % >> takes in "anat_procss.nii" image and "anatBrainMask.nii" mask, produces anat_seg_CSF.nii, anat_seg_GM.nii, anat_seg_WM.nii 
-    if strcmpi(PipeStruct_aug.ASEG{1},'FL1')
-        aseg_FL1( sprintf('%s/anat_procss.nii.gz',opath2a), sprintf('%s/anatBrainMask.nii.gz',opath2a), opath3a );
+    % >>> Anatomic segmentation
+    Step = 'ASEG';
+    if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+        error('cannot turn this step off!');
     else
-        error('unrecognized segmentation option')
+        % get function handle for analysis model of interest
+        currPath=pwd;                               % get current path
+        cd(pipeline_struct.(Step).filepath);               % jump to module directory
+        pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+        cd(currPath);                               % jump back to current path
+        % execute step:
+        pfun( sprintf('%s/anat_procss.nii.gz',opath2a), sprintf('%s/anatBrainMask.nii.gz',opath2a), opath3a, PipeStruct_aug.(Step)(2:end) );  
     end
     
     % extra step: warping the anatomical segmentations into template space
@@ -373,45 +331,79 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
             error('unrecognized initial motion estimator?!')
         end
 
-        % >> Pipeline Step #4: "TCFILT"
-        if strcmpi(PipeStruct_aug.TCFILT{1},'OP1')
-            tcfilt_OP1( sprintf('%s/perf%u%s.nii.gz',opath0,nr,drop_tag), sprintf('perf%u',nr), sprintf('%s/prewarp',opath2f), PipeStruct_aug.TCFILT{2}, motref_0rel );
-        elseif strcmpi(PipeStruct_aug.TCFILT{1},'OFF')
-            unix(sprintf('cp %s/func%u%s.nii.gz %s/prewarp/func%u_tcfilt.nii.gz',opath0,nr,drop_tag, opath2f,nr));
+        % >>> Removing "Spikes" in perf data
+        Step = 'TCFILT';
+        if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+            unix(sprintf('cp %s/perf%u%s.nii.gz %s/prewarp/perf%u_tcfilt.nii.gz',opath0,nr,drop_tag, opath2f,nr));
         else
-            error('unrecognized despiking?!')
+            % get function handle for analysis model of interest
+            currPath=pwd;                               % get current path
+            cd(pipeline_struct.(Step).filepath);               % jump to module directory
+            pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+            cd(currPath);                               % jump back to current path
+            % execute step:
+            pfun( sprintf('%s/perf%u%s.nii.gz',opath0,nr,drop_tag), sprintf('perf%u',nr), sprintf('%s/prewarp',opath2f), motref_0rel, PipeStruct_aug.(Step)(2:end) );  
         end
-        % >> Pipeline Step #4: "PWALIGN"
-        if strcmpi(PipeStruct_aug.PWALIGN{1},'AF1')
-            pwalign_AF1( sprintf('%s/prewarp/perf%u_tcfilt.nii.gz',opath2f,nr), sprintf('%s/prewarp/motref.nii.gz',opath2f), sprintf('perf%u',nr), sprintf('%s/prewarp',opath2f) ); % currently just pulls first brick from each m0run as ref
-            unix(sprintf('mv %s/prewarp/perf%u_mpe %s/warp',opath2f,nr,opath2f)); % push mpes into warp folder!
-        elseif strcmpi(PipeStruct_aug.PWALIGN{1},'OFF')
+
+        % >>> Spatial alignments
+        Step = 'PWALIGN';
+        if strcmpi(PipeStruct_aug.(Step){1},'OFF')
             unix(sprintf('cp %s/perf%u_tcfilt.nii.gz %s/prewarp/perf%u_pwalign.nii.gz',opath2f,nr, opath2f,nr));
         else
-            error('unrecognized m0-aligning?!')
+            % get function handle for analysis model of interest
+            currPath=pwd;                               % get current path
+            cd(pipeline_struct.(Step).filepath);               % jump to module directory
+            pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+            cd(currPath);                               % jump back to current path
+            % execute step:
+            pfun( sprintf('%s/prewarp/perf%u_tcfilt.nii.gz',opath2f,nr), sprintf('%s/prewarp/motref.nii.gz',opath2f), sprintf('perf%u',nr), sprintf('%s/prewarp',opath2f), PipeStruct_aug.(Step)(2:end) );  % currently just pulls first brick from each m0run as ref
+            unix(sprintf('mv %s/prewarp/perf%u_mpe %s/warp',opath2f,nr,opath2f)); % push mpes into warp folder!
         end
-        % >> Pipeline Step #8: "PRESMO" -- NB done here, but not really used until P2
-        if strcmpi(PipeStruct_aug.PRESMO{1},'AF1')
-            presmo_AF1( sprintf('%s/prewarp/perf%u_pwalign.nii.gz',opath2f,nr), sprintf('perf%u',nr), sprintf('%s/prewarp',opath2f), PipeStruct_aug.PRESMO{2} );
+
+        % >>> Spatial Smoothing (PRE)
+        Step = 'PRESMO';
+        if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+            error('cannot turn this step off!');
         else
-            error('unrecognized smoothing?!')
+            % get function handle for analysis model of interest
+            currPath=pwd;                               % get current path
+            cd(pipeline_struct.(Step).filepath);               % jump to module directory
+            pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+            cd(currPath);                               % jump back to current path
+            % execute step:
+            pfun( sprintf('%s/prewarp/perf%u_pwalign.nii.gz',opath2f,nr), sprintf('perf%u',nr), sprintf('%s/prewarp',opath2f), PipeStruct_aug.(Step)(2:end) );  
         end
     end
 
-    % >> Pipeline Step #4: "PWALIGN"
-    if strcmpi(PipeStruct_aug.PWALIGN{1},'AF1')
-        pwalign_AF1( sprintf('%s/m0ref_cat.nii.gz',opath0), sprintf('%s/prewarp/motref.nii.gz',opath2f), sprintf('m0ref'), sprintf('%s/prewarp',opath2f) ); % currently just pulls first brick from each m0run as ref
+    %--- reapply align/smooth to m0reference
+
+    % >>> Spatial alignments
+    Step = 'PWALIGN';
+    if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+        unix(sprintf('cp %s/perf%u_tcfilt.nii.gz %s/prewarp/perf%u_pwalign.nii.gz',opath2f,nr, opath2f,nr));
+    else
+        % get function handle for analysis model of interest
+        currPath=pwd;                               % get current path
+        cd(pipeline_struct.(Step).filepath);               % jump to module directory
+        pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+        cd(currPath);                               % jump back to current path
+        % execute step:
+        pfun( sprintf('%s/m0ref_cat.nii.gz',opath0), sprintf('%s/prewarp/motref.nii.gz',opath2f), sprintf('m0ref'), sprintf('%s/prewarp',opath2f), PipeStruct_aug.(Step)(2:end) );  % currently just pulls first brick from each m0run as ref
         unix(sprintf('mv %s/prewarp/m0ref_mpe %s/warp',opath2f,opath2f)); % push mpes into warp folder!
-    elseif strcmpi(PipeStruct_aug.PWALIGN{1},'OFF')
-        unix(sprintf('cp %s/m0ref_cat.nii.gz %s/prewarp/m0ref_pwalign.nii.gz',opath0, opath2f));
-    else
-        error('unrecognized m0-aligning?!')
     end
-    % >> Pipeline Step #8: "PRESMO" -- NB done here, but not really used until P2
-    if strcmpi(PipeStruct_aug.PRESMO{1},'AF1')
-        presmo_AF1( sprintf('%s/prewarp/m0ref_pwalign.nii.gz',opath2f), sprintf('m0ref'), sprintf('%s/prewarp',opath2f), PipeStruct_aug.PRESMO{2} );
+
+    % >>> Spatial Smoothing (PRE)
+    Step = 'PRESMO';
+    if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+        error('cannot turn this step off!');
     else
-        error('unrecognized smoothing?!')
+        % get function handle for analysis model of interest
+        currPath=pwd;                               % get current path
+        cd(pipeline_struct.(Step).filepath);               % jump to module directory
+        pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+        cd(currPath);                               % jump back to current path
+        % execute step:
+        pfun( sprintf('%s/prewarp/m0ref_pwalign.nii.gz',opath2f), sprintf('m0ref'), sprintf('%s/prewarp',opath2f), PipeStruct_aug.(Step)(2:end) );  
     end
     
     clear prefix_set Funcfile_set prefix_set_wrp Funcfile_set_wrp;
@@ -491,21 +483,33 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
     odir2 = sprintf('%s/postwarp',opath2f);
     Anatloc = opath2a;
 
-    % >> Pipeline Step #7: "PWFWARP"
-    if strcmpi(PipeStruct_aug.PWWARP{1},'AF1')
-        pwwarp_AF1( Funcfile_set, prefix_set, odir1, odir2, sprintf('%s/warp/motref_masked_2std.nii.gz',opath2f), Anatloc )
-    elseif strcmpi(PipeStruct_aug.PWWARP{1},'AF2')
-        pwwarp_AF2( Funcfile_set, prefix_set, odir1, odir2, sprintf('%s/warp/motref_masked_2std.nii.gz',opath2f), Anatloc )
+    % >>> Functional Warping
+    Step = 'PWWARP';
+    if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+        error('cannot turn this step off!');
     else
-        error('unrecognized functional warping scheme')
+        % get function handle for analysis model of interest
+        currPath=pwd;                               % get current path
+        cd(pipeline_struct.(Step).filepath);               % jump to module directory
+        pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+        cd(currPath);                               % jump back to current path
+        % execute step:
+        pfun( Funcfile_set, prefix_set, odir1, odir2, sprintf('%s/warp/motref_masked_2std.nii.gz',opath2f), Anatloc, PipeStruct_aug.(Step)(2:end) );  
     end
 
-    for ni=1:numel(Funcfile_set_wrp) % exclude the m0ref
-        % >> Pipeline Step #8: "POSTSMO" -- NB done here, but not really used until P2
-        if strcmpi(PipeStruct_aug.POSTSMO{1},'AF1')
-            postsmo_AF1( Funcfile_set_wrp{ni}, prefix_set_wrp{ni}, odir2, PipeStruct_aug.POSTSMO{2} );
-        else
-            error('unrecognized smoothing?!')
+    % >>> Spatial Smoothing (post)
+    Step = 'POSTSMO';
+    if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+        error('cannot turn this step off!');
+    else
+        % get function handle for analysis model of interest
+        currPath=pwd;                               % get current path
+        cd(pipeline_struct.(Step).filepath);               % jump to module directory
+        pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+        cd(currPath);                               % jump back to current path
+        % execute step:
+        for ni=1:numel(Funcfile_set_wrp)
+            pfun( Funcfile_set_wrp{ni}, prefix_set_wrp{ni}, odir2, PipeStruct_aug.(Step)(2:end) );  
         end
     end
 
@@ -657,8 +661,8 @@ else
     Vo = load_untouch_niiz(sprintf('%s/anat_warped.nii.gz',opath2a)); %***%
     
     % here is our checklist: subdirs and files
-    chklist_a = {'masks',              'brain_maps',     'brain_maps',    'brain_maps',   'brain_maps',  'brain_maps',  'masks'}
-    chklist_b = {'anat_brain_mask_grp','anat_pBRAIN_grp','anat_brain_grp','anat_pCSF_grp','anat_pGM_grp','anat_pWM_grp','anat_sulcal_mask_grp'}
+    chklist_a = {'masks',              'brain_maps',     'brain_maps',    'brain_maps',   'brain_maps',  'brain_maps',  'masks'};
+    chklist_b = {'anat_brain_mask_grp','anat_pBRAIN_grp','anat_brain_grp','anat_pCSF_grp','anat_pGM_grp','anat_pWM_grp','anat_sulcal_mask_grp'};
       
     for k=1:numel(chklist_a)
         fileimp = [outpath,'/_group_level/',chklist_a{k},'/pipe_',PipeStruct_aug.PNAME{1},'/',chklist_b{k},'.nii'];

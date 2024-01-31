@@ -1,6 +1,11 @@
-function [Xreg,stat] = roireg_OP3( functional_run, roi_paths, modelstr, decompstr )
+function [Xreg,stat] = roireg_OP3( functional_run, roi_paths, ParamCell )
 %
-% updated --> does either average or PCA on tissue subregions
+% ParamCell = {'CSF_LV_bilat'/'CSF_LV_left+CSF_LV_right+WM_CnS','PCA'/'AVG'}
+%
+% updated --> does either average or PCA-1 on set of tissue subregions
+
+modelstr  = ParamCell{1}; 
+decompstr = ParamCell{2};
 
 maskpath = roi_paths{1}; % expect : <maskpath>/func_<type>_mask_grp.nii
 parcpath = roi_paths{2}; % expect : <parcpath>/roimask_resam_<type>_<subseg>.nii

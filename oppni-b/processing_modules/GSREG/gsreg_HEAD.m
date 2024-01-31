@@ -1,11 +1,11 @@
-function output = gsreg_HEAD()
-
-%------------------ Model Attributes (mandatory fields) ------------------%
-output.attributes.model_name    = 'GSREG';
-output.attributes.pipe_stage    = 'P2';
-output.attributes.description   = 'global signal regression - removal of global activation effects';
-output.attributes.extra_fields_number    = 1;
-output.attributes.extra_fields_descript  = 'type';
-
-disp('no inputs - returning attributes');
-%-------------------------------------------------------------------------%
+%
+% -------------------------------------------------------------------------
+%          module: GSREG
+% -------------------------------------------------------------------------
+%  pipeline stage: P2
+%      applied to: fMRI data
+%         summary: filtering of global brain signal - correction for physio noise 
+%   function call: datamat_filt = gsreg_<name>( datamat, ParamCell )
+%                        datamat = matricized functional data, as a voxel x time matrix 
+%                     (ParamCell = supplemental parameters)
+%

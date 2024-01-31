@@ -1,4 +1,4 @@
-function awarp_AF1(Adataset, Maskdset, Basedset, odir)
+function awarp_AF1(Adataset, Maskdset, Basedset, odir, ParamCell)
 
 % Adataset = 'inputdataset.nii';  %# req/ input dataset
 % SubID    = 'subjID';            %# req/ the subject ID

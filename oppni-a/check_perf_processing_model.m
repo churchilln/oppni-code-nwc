@@ -1,14 +1,14 @@
-function pipeline_model_out = check_fmri_processing_model( pipestruct )
+function pipeline_model_out = check_perf_processing_model( pipestruct )
 %
 
 % declaring path
-CODE_PATH = fileparts(which('P0_fmri_populateDirectories.m'));
+CODE_PATH = fileparts(which('P0_perf_populateDirectories.m'));
 if CODE_PATH(end)~='/'
     CODE_PATH = [CODE_PATH '/'];
 end
 
 % pipe steps
-steplist = {'PNAME','AMASK','AWARP','ASEG','DESPIKE','RICOR','TSHIFT','FWARP','SMOOTH','DETREG','GSREG','MOTREG','ROIREG','TASKREG','LOPASS','COMPFILT'}; % ,'PHYCOR'
+steplist = {'PNAME','AMASK','AWARP','ASEG','TCFILT','PWALIGN','PRESMO','PWWARP','POSTSMO'}; % ==> perf_est after presmo
 
 % append unique pipeline name
 

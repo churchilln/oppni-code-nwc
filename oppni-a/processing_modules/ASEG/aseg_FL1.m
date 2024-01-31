@@ -1,4 +1,4 @@
-function aseg_FL1( Anatmasked, Mask, odir )
+function aseg_FL1( Anatmasked, Mask, odir, ParamCell )
 
 
 % prefix for temp files

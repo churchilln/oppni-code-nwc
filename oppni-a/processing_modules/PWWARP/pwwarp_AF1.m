@@ -1,4 +1,4 @@
-function pwwarp_AF1( Funcfile_set, prefix_set, odir1, odir2, Basefile_masked, Anatloc )
+function pwwarp_AF1( Funcfile_set, prefix_set, odir1, odir2, Basefile_masked, Anatloc, ParamCell )
 
 % > expects certain formatting in Anatloc folder!
 

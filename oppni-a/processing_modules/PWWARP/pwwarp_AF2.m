@@ -1,4 +1,4 @@
-function pwwarp_AF2( Funcfile_set, prefix_set, odir1, odir2, Basefile_masked, Anatloc )
+function pwwarp_AF2( Funcfile_set, prefix_set, odir1, odir2, Basefile_masked, Anatloc, ParamCell )
 
 % func warping same as AF1, but v minor tweaks for non-t1
 % compatibility... see ln.25

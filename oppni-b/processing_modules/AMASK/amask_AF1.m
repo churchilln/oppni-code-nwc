@@ -1,4 +1,4 @@
-function amask_AF1(Adataset, Basedset, odir)
+function amask_AF1(Adataset, Basedset, odir, ParamCell)
 %
 % .AFNI-based anatomical brain masking, SSwarper based
 
