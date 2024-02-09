@@ -1,4 +1,4 @@
-function output = GLM( datamat, task_info, params )
+function output = GLM( datacell, task_struc, params )
 %
 % =========================================================================
 % MODULE_GLM: module that performs General Linear Model analyses
@@ -13,9 +13,9 @@ function output = GLM( datamat, task_info, params )
 output.attributes.model_name    = 'GLM';
 output.attributes.design_type   = 'regression';
 output.attributes.model_type    = 'univariate';
-output.attributes.num_comp      = 'multi_component';
-output.attributes.spms          = 'rSPM,Beta';
-output.attributes.metrics       = 'R';
+output.attributes.image_types   = 'BetaCtr';
+output.attributes.mat2d_types   = [];
+output.attributes.stats_types   = [];
 output.attributes.uses_roifile  = 0;
 output.attributes.uses_taskfile = 1;
 
@@ -26,24 +26,42 @@ end
 %----------------------- Default Parameter Checks ------------------------%
 %-------------------------------------------------------------------------%
 
-% unit normalized bold timeseries
-ximag = (datamat - mean(datamat,2))./(std(datmat,0,2)+eps);
-% full design matrix - no mean, since matrix is centered
-xdes  = task_info.design_mat;
-xdes  = bsxfun(@rdivide, xdes, sum(xdes,1)+eps);
+% cell-ify if data matrix is input
+if ~iscell(datacell)
+    datacell = {datacell};
+end
+if ~iscell(task_struc)
+    task_struc = {task_struc};
+end
+if numel(datacell) ~= numel(task_struc)
+    error('number of datamat/taskfile runs do not match');
+end
 
+%-- option1: cat everything, do the analysis
 
-% raw betas
-output.image.beta = (dataVol * xdes) /( xdes'*xdes );
+datacat = [];
+xdescat = [];
+for nr=1:numel(datacell)
+   dtmp = 100 * datacell{nr}./mean(datacell{nr},2); % scaling as percent of baseline
+   dtmp = dtmp - mean(dtmp,2); % subtract out mean response
+   datacat = [datacat, dtmp];
+   xdescat = [xdescat; task_struc{nr}.design_mat];
+   %
+   output.temp.design_mat{nr} = task_struc{nr}.design_mat;
+end
 
-for i=1:numel(task_info.contrast)
+% raw betas - no intercept, since mean-subtracted
+betamaps = (datacat * xdescat) /( xdescat'*xdescat );
+
+for i=1:numel(task_struc{1}.contrast)
 
     % 
-    bsum1 = mean( output.image.beta(:,task_info.contrast(i).c1) ,2);
-    if isempty(task_info.contrast(i).c2)
+    bsum1 = mean( betamaps(:,task_struc{1}.contrast(i).c1) ,2);
+    if isempty(task_struc{1}.contrast(i).c2)
         bsum2 = 0;
     else
-        bsum2 = mean( output.image.beta(:,task_info.contrast(i).c2) ,2);
+        bsum2 = mean( betamaps(:,task_struc{1}.contrast(i).c2) ,2);
     end
-    output.image.beta_contrast(:,i) = bsum1-bsum2;
+    output.image.BetaCtr(:,i) = bsum1-bsum2;
 end
+

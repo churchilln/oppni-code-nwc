@@ -43,8 +43,8 @@ for(s=1:length(steplist))
         bleft       = ileft (ileft >iStep);   bleft= bleft(1);
         bright      = iright(iright>iStep);  bright=bright(1);
         pipeargs    = regexp(  pipelinestring((bleft+1):(bright-1))  ,',','split');
-        if s>1 && numel(pipeargs)==1 % second field added-
-            pipeargs{2} = [];
+        if sum(cellfun(@isempty,pipeargs))>0
+            error('pipe step %s has empty positional argument?',steplist{s});
         end
         if strcmpi(steplist{s},'PNAME') && numel(pipeargs)>1
             error('Pipeline step %s has multiple comma-separated arguments\n only allowed to specify one argument!',steplist{s});
@@ -85,3 +85,10 @@ PipeStruct.Warp_ID = [tmp_Warp_ID];
 PipeStruct.Seg_ID  = [tmp_Warp_ID,'-',tmp_Seg_ID]; %- depends uniquely on mask+warp
 PipeStruct.P1_ID   = [tmp_Warp_ID,'-',tmp_P1_ID]; %- depends uniquely on mask+warp too
 PipeStruct.P2_ID   = [tmp_Warp_ID,'-',tmp_Seg_ID,'-',tmp_P1_ID,'-',tmp_P2_ID]; %- depends on mask+warp, segmentation, P1 steps plus P2 steps
+
+%--> append empty field in position 2 if undeclared / for general modularity
+for(s=1:length(steplist))
+    if s>1 && numel(PipeStruct.(steplist{s}))==1
+        PipeStruct.(steplist{s}){2} = [];
+    end
+end

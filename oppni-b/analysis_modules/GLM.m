@@ -46,6 +46,8 @@ for nr=1:numel(datacell)
    dtmp = dtmp - mean(dtmp,2); % subtract out mean response
    datacat = [datacat, dtmp];
    xdescat = [xdescat; task_struc{nr}.design_mat];
+   %
+   output.temp.design_mat{nr} = task_struc{nr}.design_mat;
 end
 
 % raw betas - no intercept, since mean-subtracted

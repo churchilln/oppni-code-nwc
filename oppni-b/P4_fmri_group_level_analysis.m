@@ -1,35 +1,52 @@
 function P4_fmri_group_level_analysis( inputfile, pipelinefile, paramlist, outpath, param, volno, design_mat, analysis_model, model_contrast, THRESH_METHOD, out_folder_name, censor )
 %
 % Input:
-%      inputfile : string, giving name of input textfile listing data to process
-%      pipelinefiles : string, giving name of pipeline textfile specifying which pipeline steps to apply to the data
-%      paramlist : string, giving name of parameter file specifying special arguments to use in pipelines
-%      outpath : string, specifying destination directory for processed outputs
 %
-%            volno: index number among contrasts to analyze, if multiple ones
-%                           or contrast vector
-%       design_mat: design matrix in table format; should have header w variable names
-%       analysis_model: string specifying analysis model ('Ttest' or 'GLM')
-%      model_contrast: string specifying contrast, based on design matrix fields
-%                   (default -- none, do a 1-sample contrast)
-%       THRESH_METHOD: threshold method -- 2-element cell array specifying type, critical value}
-%                          can be uncorrected: {'UNCORR',[p-value]}
-%                               fdr-corrected: {'FDR',[q-value]}
-%                   or cluster-size corrected: {'CLUST',[minimum cluster size]}
-%                   (default -- none)
-%         out_folder_name: string specifying prefix for output files
-%                  format is ['Analysis_',<outname>]
+%          inputfile : string, giving name of input textfile listing data to process
+%      pipelinefiles : string, giving name of pipeline textfile specifying which pipeline steps to apply to the data
+%          paramlist : string, giving name of parameter file specifying special arguments to use in pipelines
+%            outpath : string, specifying destination directory for processed outputs
+%
+%              volno : index number among contrasts to analyze, if multiple ones
+%                      can also use this to specify contrast
+%         design_mat : design matrix in table format; should have header w variable names
+%     analysis_model : string specifying analysis model ('Ttest' or 'GLM')
+%                      (default -- Ttest)
+%     model_contrast : string specifying contrast, based on design matrix fields
+%                     (default -- none, do a 1-sample contrast)
+%      THRESH_METHOD : threshold method -- 2-element cell array specifying type, critical value}
+%                      can be uncorrected: {'UNCORR',[p-value]}
+%                      fdr-corrected: {'FDR',[q-value]}
+%                      or cluster-size corrected: {'CLUST',[minimum cluster size]}
+%                      (default -- none, dont create a thresholded map)
+%    out_folder_name : string specifying prefix for output files
+%                      format is ['Analysis_',<outname>]
+%             censor : file tells you which participants to RETAIN (1=keep /0=exclude
+%
 
 
 % initializing structure and running checkes
 [subject_list, ~, PipeStruct_aug, ParamStruct_aug] = P0_fmri_populateDirectories( inputfile, pipelinefile, paramlist, outpath );
 
 if isempty(censor)
-    censor = zeros(numel(subject_list),1);
+    censor = ones(numel(subject_list),1);
+elseif ischar(censor)
+    if exist(censor,'file')
+        censor = readtable(censor);
+        censor = table2array(censor(:,end));
+    else
+        error('cannot find censor file');
+    end
+else
+    if size(censor,2)>1
+        error('numeric input for censor must be a vector')
+    end
 end
 
 % now augmenting outpath... do this after P0!
 outpath = fullfile(outpath,'fmri_proc'); % subdir should be fmri_proc
+
+%% Loading imaging data
 
 MBstr = ([outpath,'/_group_level/masks/pipe_',PipeStruct_aug.PNAME{1},'/func_brain_mask_grp.nii']);
 MB = load_untouch_niiz(MBstr);
@@ -71,12 +88,16 @@ for i=1:numel(subject_list)
             datamat(:,i) = mean(x.out_analysis.image.(param)(:,bb),2) - mean(x.out_analysis.image.(param)(:,aa),2);
         end
     elseif strcmpi( param_type,'mat2d' )
+        if ~isempty(volno) error('condition constrasts unsupported for connectivity arrays'); end
         datamat(:,i) = reshape( x.out_analysis.mat2d.(param), [],1);
     else
         error('??')
     end
 end
+% applying censoring to datamat
+D2 = datamat(:,censor==1);
 
+%% Loading design matrix / behavioural data
 
 if isempty(design_mat)
     Xdes = [];
@@ -96,71 +117,215 @@ else
         error('design matrix size does not match number of fMRI participants loaded!');
     end
     Xdes = table2array(design_mat);
-    heads = design_mat.Properties.VariableNames;
+    heads = design_mat.Properties.VariableNames;    
 end
 
 if ~isempty(model_contrast) % split into strings
-   model_contrast = regexp( model_contrast,',','split');
-end
-
-if strcmpi( analysis_model, 'GLM' )
-    
-    if isempty(model_contrast) error('need to specify a model contrast for GLMs!'); end
-    if isempty(Xdes) error('need to load a design matrix for GLMs!'); end
-    
+    model_contrast = regexp( model_contrast,',','split');
     for i=1:numel(model_contrast)
         ix = find( strcmpi( model_contrast{i}, heads) );
         if isempty(ix) error('cannot find variable "%s" in design matrix!\n',model_contrast{i}); end
         Xdes_new(:,i) = Xdes(:,ix);
     end
+    % applying censoring to design matrix
+    X2 = Xdes_new(censor==1,:);
+else
+    Xdes_new = [];
+    X2 = [];
+end
 
-    D = datamat(:,censor==0);
+%% Check #1 >> missing data?
+
+fprintf('\n=========================================================\n');
+
     % check for bad/missing values
-    ixdrop_D = mean(~isfinite(D),1)>0.10;
-    fprintf('number of volumes with more than 10% missing data: %s\n',numel(ixdrop_D));
-    X = Xdes_new(censor==0,:);
-    ixdrop_X = ~isfinite(mean(X,2));
-    fprintf('number of design rows with missing data: %s\n',numel(ixdrop_X));
-    %
-    ixdrop_XD = unique( [ixdrop_D(:); ixdrop_X(:)]);
-    fprintf('discarding total: %s\n',numel(ixdrop_XD));
-%     %
-%     D(:,ixdrop_XD) = [];
-%     X(ixdrop_XD,:) = [];
+    fprintf('Missing data check, imaging:\n');
+    ixdrop_D = mean(~isfinite(D2),1)>0.10;
+    fprintf('number of volumes with more than 10 percent of voxels missing: %s\n',sum(ixdrop_D));
+    if     mean(ixdrop_D)==0   fprintf('no missing data.')
+    elseif mean(ixdrop_D)<0.10 fprintf('less than 10 percent of participants have substantial missing data');
+    elseif mean(ixdrop_D)>0.10 warning('more than 10 percent of participants have substantial missing data');
+    elseif mean(ixdrop_D)>0.20   error('more than 20 percent of participants have substantial missing data. Halting!');
+    end
+    fprintf('Missing data check, design matrix:\n');
+    if isempty(X2)
+        disp('...no design matrix!\n');
+    else
+        ixdrop_X = ~isfinite(mean(X2,2));
+        fprintf('number of design rows with missing data: %s\n',sum(ixdrop_X));
+        if     mean(ixdrop_X)==0   fprintf('no missing data.')
+        elseif mean(ixdrop_X)<0.10 fprintf('less than 10 percent of participants have substantial missing data');
+        elseif mean(ixdrop_X)>0.10 warning('more than 10 percent of participants have substantial missing data');
+        elseif mean(ixdrop_X)>0.20   error('more than 20 percent of participants have substantial missing data. Halting!');
+        end
+    end
+    fprintf('number of datapoints dropped, total: %u (from original %u)\n',sum(ixdrop_X | ixdrop_D),size(D2,2) );
+    fprintf('dropping any missing points from data before proceeding...\n')
+    %-- dropping  points with missing data before proceeding
+    D2(:,ixdrop_X | ixdrop_D) = [];
+    X2(ixdrop_X | ixdrop_D,:) = [];
+
+fprintf('=========================================================\n\n');
+
+%% Check #2 >> quality of design matrix
+
+fprintf('\n=========================================================\n');
     
+    fprintf('Quality checks, design matrix:\n');
+    if isempty(X2)
+        fprintf('design matrix is empty, skipping this step....\n')
+    else
+        ix = find( sum(X2.^2,1) < eps );
+        if ~isempty(ix)
+            strtmp = []; for i=1:numel(ix) [strtmp, ', ', model_contrast{i}]; end
+            error('empty columns in: %s\n',strtmp(3:end));
+        else
+            fprintf('no empty columns!\n');
+        end
+        xtmp = max(abs(X2),[],1);
+        if numel(xtmp)>1 && max(xtmp)/min(xtmp) > 1E6
+            [~,ix1]=min(xtmp);
+            [~,ix2]=max(xtmp);
+            error('Numeric scaling issue likely to give poor results: check %s or %s (possibly others)\n',model_contrast{i1},model_contrast{i2});
+        else
+            fprintf('scaling ok!\n')
+        end
+        % check indiv cols
+        for i=1:size(X2,2)
+    
+            strtmp = ['col.',num2str(i),' (',model_contrast{i},') -- '];
 
-    % checking design matrix
-    fprintf('matrix condition (unnormed): %f\n',cond(X));
-    fprintf('matrix condition (normed): %f\n',cond(X./sqrt(sum(X.^2,1))));
-    % checking for outliers, design matrix
-    fprintf('skewness of cols:\n');
-    skewness(X),
-    fprintf('kurtosis of cols:\n')
-    kurtosis(X),
+            if numel(unique(X2(:,i)))
+                strtmp = [strtmp 'binary: '];
+                ncl1= sum( X2(:,i)==min(X2(:,i)) );
+                ncl2= sum( X2(:,i)==max(X2(:,i)) );
+                strtmp = [strtmp, 'sample split: ',num2str(ncl1),'/',num2str(ncl2),'.'];
+                if    ( ncl1/(ncl1+ncl2) < 0.10 )   strtmp = [strtmp ' grp1 constitutes <10 pct. of your sample. Extremely unbalanced!\n'];
+                elseif( ncl2/(ncl1+ncl2) < 0.10 )   strtmp = [strtmp ' grp2 constitutes <10 pct. of your sample. Extremely unbalanced!\n'];
+                elseif( ncl1/(ncl1+ncl2) < 0.20 )   strtmp = [strtmp ' grp1 constitutes 10-20 pct. of your sample. Unbalanced - proceed with caution!\n'];
+                elseif( ncl2/(ncl1+ncl2) < 0.20 )   strtmp = [strtmp ' grp2 constitutes 10-20 pct. of your sample. Unbalanced - proceed with caution!\n'];
+                else  strtmp = [strtmp ' ok.\n'];
+                end       
+                fprintf(strtmp);
+            else
+                strtmp = [strtmp 'continuous: '];
+                strtmp = [strtmp, sprintf('skew=%.02f, kurt=%.02f.',skewness(X2(:,i)),kurtosis(X2(:,i)))];
+                sknul = skewness(randn(size(X2,1),5000),0,1);
+                isfa = 0;
+                if mean( abs(skewness(X2(:,i))) > abs(sknul) ) > 0.95
+                    isfa = 1;
+                    strtmp = [strtmp ' variable is significantly non-normal (skew test, p<.05). Proceed with caution!\n'];
+                end
+                sknul = kurtosis(randn(size(X2,1),5000),0,1);
+                if mean( abs(kurtosis(X2(:,i))) > abs(sknul) ) > 0.95
+                    isfa = 1;
+                    strtmp = [strtmp ' variable is significantly non-normal (kurt test, p<.05). Proceed with caution!\n'];
+                end 
+                if isfa==0
+                    strtmp = [strtmp ' ok.\n'];
+                end
+            end
+        end
+        % collinearity
+        cctmp = corr(X2);
+        cctmp = cctmp .* triu( ones(size(cctmp)), 1);
+        [vx,ix] = max(abs(cctmp));
+        if numel(xtmp)>1 && vx>0.90
+            [i1,i2]=ind2sub(size(cctmp),ix);
+            error('Redundant predictors: check %s or %s (possibly others)\n',model_contrast{i1},model_contrast{i2});
+        else
+            fprintf('pairwise collin ok!\n')
+        end
+        % condition
+        Xtmp = [ones(size(X2,1),1) X2]; % include intercept!
+        cnum = cond(Xtmp);
+        fprintf('Condition check. Number of regressors (excluding constant): %u. Condition number: %.03f.\n',size(X2,2),cnum );
+        if    ( cnum > 1000 ) fprintf(['GLM design matrix is probably multi-collinear! condition number>1000\n']);
+        elseif( cnum > 100  ) fprintf(['GLM design matrix is approaching multi-collinearity! condition number>100\n']);
+        else                  fprintf(['GLM design matrix is probably ok! condition number<100\n']);
+        end
+    end
+
+fprintf('=========================================================\n\n');
 
 
-    out_analysis = GLM_ph( datamat(:,censor==0), Xdes_new(censor==0,:) );
+%% Check #2 >> quality of datamatrix
+
+fprintf('\n=========================================================\n');
+    
+    figure;
+    dtmp = D2 - mean(D2,2);
+    subplot(3,2,1); imagesc( dtmp ); title('mean-centered')
+    dtmp = dtmp./std(dtmp,0,2);
+    subplot(3,2,2); imagesc( dtmp ); title('var-normed')
+    dtmp = dtmp.^2;
+    subplot(3,2,2); imagesc( dtmp ); title('squared deviation')
+    
+    dif = bsxfun(@minus,D2,mean(D2,2,'omitnan')).^2; % deviation from mean map
+    outl = mean(dif,1)';                       % mean deviation (averaging over voxels)
+    outl = outl./max(outl);                    % renorming deviation
+    figure;
+    subplot(3,2,2); bar( outl ); ylim( [0 1.01]);
+    PARMHAT = gamfit(outl(isfinite(outl)));    % gamma distribution fitting 
+    Pgam = gamcdf(outl,PARMHAT(1),PARMHAT(2)); % probability on gammas
+    subplot(3,2,4); bar( 1-Pgam(isfinite(outl)) ); ylim( [0 0.05]);
+    [p th]=fdr(1-Pgam,'p',0.05,0);             % signifiant outliers FDR=0.05
+    if sum(th)<=0
+        fprintf('no significant outlier volumes!\n');
+    else
+        fprintf('Found %u significant outlier volumes:\n',sum(th>0));
+        fith = find(th>0);
+        strtmp = [];
+        for i=1:numel(fith)
+            strtmp = [strtmp ', ', subject_list{fith(i)}];
+        end
+        fprintf('   %s\n',strtmp(3:end))
+    end
+
+fprintf('=========================================================\n\n');
+
+
+if strcmpi( analysis_model, 'GLM' )
+    
+    if isempty(model_contrast) error('need to specify a model contrast for GLMs!'); end
+    if isempty(X2) error('need to load a design matrix for GLMs!'); end
+    
+    out_analysis = GLM_ph( D2, X2 );
     
 elseif strcmpi( analysis_model, 'Ttest' )
     
-    if isempty(model_contrast)
+    if isempty(X2)
         disp('no contrast. defaulting to 1-sample t-test');
-        Xdes_new = 0;
     else
-        if numel(model_contrast>0) error('can only have a single (categorical) predictor for T-testing'); end
-        ix = find( strcmpi( model_contrast{1}, heads) );
-        if isempty(ix) error('cannot find variable "%s" in design matrix!\n',model_contrast{i}); end
-        Xdes_new(:,1) = Xdes(:,ix);
-        if numel(unique(Xdes_new)) ~= 2
+        if size(X2,2)>1 error('can only have a single (categorical) predictor for T-testing'); end
+        if numel(unique(X2)) ~= 2
             error('for t-test, predictor must be categorical');
         end
     end
 
-    if numel(Xdes_new)>1
-    out_analysis = Ttest_ph( datamat(:,censor==0), Xdes_new(censor==0,:) );
-    else
-    out_analysis = Ttest_ph( datamat(:,censor==0), Xdes_new );
-    end
+    out_analysis = Ttest_ph( D2, X2 );
+    
+elseif strcmpi( analysis_model, 'PCA' )
+
+
+    [u,l,v] = svd( X2,'econ' );
+
+    figure,
+    subplot(2,2,1); bar( diag(l.^2)./trace(l.^2) ); title('design matrix')
+    subplot(2,2,2); plot( u(:,1), u(:,2), 'ok', 'markerfacecolor',[0.5 0.5 0.5] )
+    subplot(2,2,3); bar( u(:,1:2) );
+    subplot(2,2,4); bar( v(:,1:2) );
+
+    [u,l,v] = svd( D2,'econ' );
+
+    figure,
+    subplot(2,2,1); bar( diag(l.^2)./trace(l.^2) ); title('design matrix')
+    subplot(2,2,2); plot( v(:,1), v(:,2), 'ok', 'markerfacecolor',[0.5 0.5 0.5] )
+    subplot(2,2,3); bar( v(:,1:2) );
+    subplot(2,2,3); bar( v(:,1:2) );
+    subplot(2,2,4); bar( u(:,1:2) );
+    axial_plot( u(:,1), maskS, 6, 1, 1 );
+    axial_plot( u(:,2), maskS, 6, 1, 1 );
 end
 
 mkdir_r(out_folder_name);

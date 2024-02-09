@@ -145,6 +145,35 @@ else
         else
             error('pipeline block P2 not found -- does this pipeline exist?')
         end
+    elseif strcmpi(PartToDelete,'Analysis')
+        % special case --> only remove the analysis results!
+        % looks like P2, but we do not delete this segment...
+        ix = find( strcmp(PipeStruct.PNAME{1},pipe_key.P2(:,1))); % slightly different - match on NAME, then check STRING
+        if ~isempty(ix)
+            %> P2 has no descendents
+            % "authenticate" -> match was found for pname, make sure if corresponds to the same actual sequence
+            if ~strcmp(PipeStruct.P2_ID,pipe_key.P2{ix,2})
+                error('Pipeline with name %s does not match existing one! What changed?\n\tOld: %s\n\tNew: %s\n',PipeStruct.PNAME{1},pipe_key.P2{ix,2},PipeStruct.P2_ID)
+            end
+            %
+            cell_idx_todel.Warp = [];
+            pipe_idx_todel.Warp = [];
+            %
+            cell_idx_todel.Seg  = [];
+            pipe_idx_todel.Seg  = [];
+            %
+            cell_idx_todel.P1  = [];
+            pipe_idx_todel.P1  = [];
+            %
+            cell_idx_todel.P2 = []; % row of cell array to del
+            pipe_idx_todel.P2 = []; % name of folder todel
+
+            pipe_AnalysisLoc  = pipe_key.P2(ix,1);
+        else
+            error('pipeline block P2 not found -- does this pipeline exist?')
+        end
+    else
+        error('unrecognized PartToDelete: %s',PartToDelete)
     end
 
     % save a backup copy in case something goes wrong
@@ -185,38 +214,43 @@ for(ns=1:numel(InputStruct))
     % take ith subject input structure
     InputStruct_temp = InputStruct(ns);
 
-    % .proceeding from "leaf" (P2) to "trunk" (warp)
-    
-    % delete all specified p2 pipelines
-    if ~isempty(cell_idx_todel.P2)
-        for i=1:numel(pipe_idx_todel.P2)
-            unix(sprintf('rm -rf %s', fullfile( outpath,InputStruct_temp.PREFIX,'func_proc_p2',sprintf('pipe_%s',pipe_idx_todel.P2{i}) )) );
-        end
-    end
-    % then delete all specified p1 pipelines
-    if ~isempty(cell_idx_todel.P1)
-        for i=1:numel(pipe_idx_todel.P1)
-            unix(sprintf('rm -rf %s', fullfile( outpath,InputStruct_temp.PREFIX,'func_proc_p1',sprintf('subpipe_%03u',pipe_idx_todel.P1{i}) )) ); % _seg gets deleted too
-        end
-    end
-    % then delete all specified segs [SPECIAL CASE - pick through P1/Warp subfolders]
-    if ~isempty(cell_idx_todel.Seg)
-        for i=1:numel(pipe_idx_todel.Seg)
-            % for all extant p1 dirs --> delete seg subpipe if found
-            e = dir(sprintf('%s/%s/func_proc_p1/subpipe_*',outpath,InputStruct_temp.PREFIX));
-            for j=1:numel(e)
-                unix(sprintf('rm -rf %s/%s/seg_subpipe_%03u',e(j).folder,e(j).name,pipe_idx_todel.Seg{i}));
-            end
-            e = dir(sprintf('%s/%s/anat_proc/subpipe_*',outpath,InputStruct_temp.PREFIX));
-            for j=1:numel(e)
-                unix(sprintf('rm -rf %s/%s/seg_subpipe_%03u',e(j).folder,e(j).name,pipe_idx_todel.Seg{i}));
+    if strcmpi(PartToDelete,'Analysis') % special case
+        % just delete the analysis folder!!
+        unix(sprintf('rm -rf %s', fullfile( outpath,InputStruct_temp.PREFIX,'func_proc_p2',sprintf('pipe_%s',pipe_idx_todel.P2{1}),ParamStruct_aug.Variable_ID )) );
+    else
+        % .proceeding from "leaf" (P2) to "trunk" (warp)
+        
+        % delete all specified p2 pipelines
+        if ~isempty(cell_idx_todel.P2)
+            for i=1:numel(pipe_idx_todel.P2)
+                unix(sprintf('rm -rf %s', fullfile( outpath,InputStruct_temp.PREFIX,'func_proc_p2',sprintf('pipe_%s',pipe_idx_todel.P2{i}) )) );
             end
         end
-    end
-    % then delete all specified warps
-    if ~isempty(cell_idx_todel.Warp)
-        for i=1:numel(pipe_idx_todel.Warp)
-            unix(sprintf('rm -rf %s', fullfile( outpath,InputStruct_temp.PREFIX,'anat_proc',sprintf('subpipe_%03u',pipe_idx_todel.Warp{i}) )) ); % _seg gets deleted too
+        % then delete all specified p1 pipelines
+        if ~isempty(cell_idx_todel.P1)
+            for i=1:numel(pipe_idx_todel.P1)
+                unix(sprintf('rm -rf %s', fullfile( outpath,InputStruct_temp.PREFIX,'func_proc_p1',sprintf('subpipe_%03u',pipe_idx_todel.P1{i}) )) ); % _seg gets deleted too
+            end
+        end
+        % then delete all specified segs [SPECIAL CASE - pick through P1/Warp subfolders]
+        if ~isempty(cell_idx_todel.Seg)
+            for i=1:numel(pipe_idx_todel.Seg)
+                % for all extant p1 dirs --> delete seg subpipe if found
+                e = dir(sprintf('%s/%s/func_proc_p1/subpipe_*',outpath,InputStruct_temp.PREFIX));
+                for j=1:numel(e)
+                    unix(sprintf('rm -rf %s/%s/seg_subpipe_%03u',e(j).folder,e(j).name,pipe_idx_todel.Seg{i}));
+                end
+                e = dir(sprintf('%s/%s/anat_proc/subpipe_*',outpath,InputStruct_temp.PREFIX));
+                for j=1:numel(e)
+                    unix(sprintf('rm -rf %s/%s/seg_subpipe_%03u',e(j).folder,e(j).name,pipe_idx_todel.Seg{i}));
+                end
+            end
+        end
+        % then delete all specified warps
+        if ~isempty(cell_idx_todel.Warp)
+            for i=1:numel(pipe_idx_todel.Warp)
+                unix(sprintf('rm -rf %s', fullfile( outpath,InputStruct_temp.PREFIX,'anat_proc',sprintf('subpipe_%03u',pipe_idx_todel.Warp{i}) )) ); % _seg gets deleted too
+            end
         end
     end
 end
