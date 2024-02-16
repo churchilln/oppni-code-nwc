@@ -142,7 +142,7 @@ if ~exist(  fullfile(outpath,'_group_level','QC','qc.quant',['QCStruct_quant_pip
     
         for nr=1:InputStruct_ssa.N_func
     
-            mpe = load(sprintf('%s/warp/func%u_mpe',opath2f,nr));
+            mpe = load(sprintf('%s/warp/func%u_mpe',opath2f,nr),'-ascii');
     
             % absolute [motion] disp
             rmsd=[];

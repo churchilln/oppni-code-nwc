@@ -291,7 +291,14 @@ if strcmpi( analysis_model, 'GLM' )
     if isempty(X2) error('need to load a design matrix for GLMs!'); end
     
     out_analysis = GLM_ph( D2, X2 );
+
+elseif strcmpi( analysis_model, 'GLMboot' )
+
+    if isempty(model_contrast) error('need to specify a model contrast for GLMs!'); end
+    if isempty(X2) error('need to load a design matrix for GLMs!'); end
     
+    out_analysis = GLMboot_ph( D2, X2 );
+
 elseif strcmpi( analysis_model, 'Ttest' )
     
     if isempty(X2)
@@ -304,9 +311,36 @@ elseif strcmpi( analysis_model, 'Ttest' )
     end
 
     out_analysis = Ttest_ph( D2, X2 );
+
+elseif strcmpi( analysis_model, 'Bootstrap' )
     
+    if isempty(X2)
+        disp('no contrast. defaulting to 1-sample t-test');
+    else
+        if size(X2,2)>1 error('can only have a single (categorical) predictor for T-testing'); end
+        if numel(unique(X2)) ~= 2
+            error('for t-test, predictor must be categorical');
+        end
+    end
+
+    out_analysis = Bootstrap_ph( D2, X2 );
+
+elseif strcmpi( analysis_model, 'Permute' )
+    
+    if isempty(X2)
+        disp('no contrast. defaulting to 1-sample t-test');
+    else
+        if size(X2,2)>1 error('can only have a single (categorical) predictor for T-testing'); end
+        if numel(unique(X2)) ~= 2
+            error('for t-test, predictor must be categorical');
+        end
+    end
+
+    out_analysis = Permute_ph( D2, X2 );
+
 elseif strcmpi( analysis_model, 'PCA' )
 
+    figure,imagesc( zscore(X2')',[-3.5 3.5]); colormap jet;
 
     [u,l,v] = svd( X2,'econ' );
 
@@ -326,56 +360,71 @@ elseif strcmpi( analysis_model, 'PCA' )
     subplot(2,2,4); bar( u(:,1:2) );
     axial_plot( u(:,1), maskS, 6, 1, 1 );
     axial_plot( u(:,2), maskS, 6, 1, 1 );
+
+    disp('just plotting for now---');
+    return;
 end
 
 mkdir_r(out_folder_name);
 out_analysis.submask = x.out_analysis.submask;
 save([out_folder_name,'/out_analysis.mat'],'out_analysis');
 
+a = fieldnames(out_analysis);
+pix = find( contains(a,'_p'));
+if isempty(pix) error('no p-value thresholding available!')
+elseif numel(pix)>1 error('too many p-value fields');
+end
+pfield = a{pix};
+pix = find( strcmpi(a,pfield(1:end-2)));
+if isempty(pix) error('no effect size matching p-value!')
+elseif numel(pix)>1 error('too many effect sizes matching p-value?');
+end
+vfield = a{pix};
+
 %%
 
 if strcmpi( param_type,'image' )
     
     %--1
-    TMPVOL = zeros( [size(out_analysis.submask), size(out_analysis.tstat,2)] );
-    for i=1:size(out_analysis.tstat,2)
+    TMPVOL = zeros( [size(out_analysis.submask), size(out_analysis.(vfield),2)] );
+    for i=1:size(out_analysis.(vfield),2)
         tmp = out_analysis.submask;
-        tmp(tmp>0) = out_analysis.tstat(:,i);
+        tmp(tmp>0) = out_analysis.(vfield)(:,i);
         TMPVOL(:,:,:,i) = tmp;
     end
     nii=MB;
     nii.img = TMPVOL;
     nii.hdr.dime.datatype = 16;
     nii.hdr.hist = MB.hdr.hist;
-    nii.hdr.dime.dim(5) = size(out_analysis.tstat,2);
-    save_untouch_niiz(nii,[out_folder_name,'/tmaps_unthresh.nii']); 
+    nii.hdr.dime.dim(5) = size(out_analysis.(vfield),2);
+    save_untouch_niiz(nii,[out_folder_name,'/',vfield,'_unthresh.nii']); 
     
     %--2
-    TMPVOL = zeros( [size(out_analysis.submask), size(out_analysis.tstat,2)] );
-    for i=1:size(out_analysis.tstat,2)
+    TMPVOL = zeros( [size(out_analysis.submask), size(out_analysis.(vfield),2)] );
+    for i=1:size(out_analysis.(vfield),2)
         tmp = out_analysis.submask;
-        tmp(tmp>0) = out_analysis.tstat_p(:,i);
+        tmp(tmp>0) = out_analysis.(pfield)(:,i);
         TMPVOL(:,:,:,i) = tmp;
     end
     nii=MB;
     nii.img = TMPVOL;
     nii.hdr.dime.datatype = 16;
     nii.hdr.hist = MB.hdr.hist;
-    nii.hdr.dime.dim(5) = size(out_analysis.tstat,2);
-    save_untouch_niiz(nii,[out_folder_name,'/pmaps_unthresh.nii']); 
+    nii.hdr.dime.dim(5) = size(out_analysis.(vfield),2);
+    save_untouch_niiz(nii,[out_folder_name,'/',pfield,'_unthresh.nii']); 
     
     if strcmpi(THRESH_METHOD{1},'FDR')
-        [~,th] = fdr( out_analysis.tstat_p,'p',THRESH_METHOD{2},0 );
-        numaps = out_analysis.tstat .* th;
+        [~,th] = fdr( out_analysis.(pfield),'p',THRESH_METHOD{2},0 );
+        numaps = out_analysis.(vfield) .* th;
     elseif strcmpi(THRESH_METHOD{1},'CLUST')
-        for i=1:size(out_analysis.tstat,2)
+        for i=1:size(out_analysis.(vfield),2)
            tmp = out_analysis.submask;
-           tmp(tmp>0) = double(out_analysis.tstat_p(:,i)<=0.005) .* out_analysis.tstat(:,i);
+           tmp(tmp>0) = double(out_analysis.(pfield)(:,i)<=0.005) .* out_analysis.(vfield)(:,i);
            tmp = clust_up( tmp, THRESH_METHOD{2} );
            numaps(:,i) = tmp(out_analysis.submask>0);
         end
     elseif strcmpi(THRESH_METHOD{1},'UNCORR')
-        numaps = out_analysis.tstat .* double(out_analysis.tstat_p<=THRESH_METHOD{2});
+        numaps = out_analysis.(vfield) .* double(out_analysis.(pfield)<=THRESH_METHOD{2});
     else
         numaps = [];
     end
@@ -384,8 +433,8 @@ if strcmpi( param_type,'image' )
         disp('number of significant voxels:');
         sum( numaps ~= 0 ),
         
-        TMPVOL = zeros( [size(out_analysis.submask), size(out_analysis.tstat,2)] );
-        for i=1:size(out_analysis.tstat,2)
+        TMPVOL = zeros( [size(out_analysis.submask), size(out_analysis.(vfield),2)] );
+        for i=1:size(out_analysis.(vfield),2)
             tmp = out_analysis.submask;
             tmp(tmp>0) = numaps(:,i);
             TMPVOL(:,:,:,i) = tmp;
@@ -394,33 +443,33 @@ if strcmpi( param_type,'image' )
         nii.img = TMPVOL;
         nii.hdr.dime.datatype = 16;
         nii.hdr.hist = MB.hdr.hist;
-        nii.hdr.dime.dim(5) = size(out_analysis.tstat,2);
-        save_untouch_niiz(nii,[out_folder_name,'/tmaps_',THRESH_METHOD{1},'.nii']); 
+        nii.hdr.dime.dim(5) = size(out_analysis.(vfield),2);
+        save_untouch_niiz(nii,[out_folder_name,'/',vfield,'_',THRESH_METHOD{1},'.nii']); 
     end
 
 elseif strcmpi( param_type,'mat2d' )
 
     %--1
-    tmaps = out_analysis.tstat;
+    tmaps = out_analysis.(vfield);
     for i=1:size(tmaps,2)
         tmap2d = reshape(tmaps(:,i),matdims);
-        writematrix(tmap2d,[out_folder_name,'/tmap2d_',num2str(i),'_unthresh.txt']); 
+        writematrix(tmap2d,[out_folder_name,'/',vfield,'_2d_',num2str(i),'_unthresh.txt']); 
     end
 
     %--2
-    pmaps = out_analysis.tstat_p;
+    pmaps = out_analysis.(pfield);
     for i=1:size(tmaps,2)
         pmap2d = reshape(pmaps(:,i),matdims);
-        writematrix(pmap2d,[out_folder_name,'/pmap2d_',num2str(i),'_unthresh.txt']); 
+        writematrix(pmap2d,[out_folder_name,'/',pfield,'_2d_',num2str(i),'_unthresh.txt']); 
     end
     
     if strcmpi(THRESH_METHOD{1},'FDR')
-        [~,th] = fdr( out_analysis.tstat_p,'p',THRESH_METHOD{2},0 );
-        numaps = out_analysis.tstat .* th;
+        [~,th] = fdr( out_analysis.(pfield),'p',THRESH_METHOD{2},0 );
+        numaps = out_analysis.(vfield) .* th;
     elseif strcmpi(THRESH_METHOD{1},'CLUST')
         error('cannot spatially cluster conn matrices')
     elseif strcmpi(THRESH_METHOD{1},'UNCORR')
-        numaps = out_analysis.tstat .* double(out_analysis.tstat_p<=THRESH_METHOD{2});
+        numaps = out_analysis.(vfield) .* double(out_analysis.(pfield)<=THRESH_METHOD{2});
     else
         numaps = [];
     end
@@ -432,7 +481,7 @@ elseif strcmpi( param_type,'mat2d' )
         
         for i=1:size(numaps,2)
             tmap2d_thresh = reshape(tmaps_thresh(:,i),matdims);
-            writematrix(tmap2d_thresh,[out_folder_name,'/tmap2d_thresh_',num2str(i),'_',THRESH_METHOD{1},'.txt']); 
+            writematrix(tmap2d_thresh,[out_folder_name,'/',vfield,'_2d_thresh_',num2str(i),'_',THRESH_METHOD{1},'.txt']); 
         end
     end
 end
@@ -442,17 +491,17 @@ end
     score_arr = NaN*ones( numel(subject_list), 2*size(tmaps,2) );
 
     if strcmpi(THRESH_METHOD{1},'FDR')
-        [~,th] = fdr( out_analysis.tstat_p,'p',THRESH_METHOD{2},0 );
-        numaps = out_analysis.tstat .* th;
+        [~,th] = fdr( out_analysis.(pfield),'p',THRESH_METHOD{2},0 );
+        numaps = out_analysis.(vfield) .* th;
     elseif strcmpi(THRESH_METHOD{1},'CLUST')
-        for i=1:size(out_analysis.tstat,2)
+        for i=1:size(out_analysis.(vfield),2)
            tmp = out_analysis.submask;
-           tmp(tmp>0) = double(out_analysis.tstat_p(:,i)<=0.005) .* out_analysis.tstat(:,i);
+           tmp(tmp>0) = double(out_analysis.(pfield)(:,i)<=0.005) .* out_analysis.(vfield)(:,i);
            tmp = clust_up( tmp, THRESH_METHOD{2} );
            numaps(:,i) = tmp(out_analysis.submask>0);
         end
     elseif strcmpi(THRESH_METHOD{1},'UNCORR')
-        numaps = out_analysis.tstat .* double(out_analysis.tstat_p<=THRESH_METHOD{2});
+        numaps = out_analysis.(vfield) .* double(out_analysis.(pfield)<=THRESH_METHOD{2});
     else
         numaps = [];
     end
