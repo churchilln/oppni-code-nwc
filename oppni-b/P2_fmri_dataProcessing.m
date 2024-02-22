@@ -300,6 +300,9 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
 
     % --> NB: block-1 processing gets split into prewarp/warp/postwarp subfolders for ease of debugging
     
+    % clear for variable run lengths between subj.
+    clear prefix_set Funcfile_set base_set prefix_set_wrp Funcfile_set_wrp;
+
     for nr=1:InputStruct_ssa.N_func
 
         % tag for rawdata in case scan dropping was performed

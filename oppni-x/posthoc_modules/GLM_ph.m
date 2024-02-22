@@ -15,8 +15,9 @@ k    = size(design, 2);
     % sample
     D = datamat;
     y = design;
-    % run ols regression (sans intercept)
+    % run ols regression--
     Beta = D * (y / (y'*y));
+    D_estim = Beta * y';
 
     % now, estimate t-statistics on signal
     residvar    = var(D - D_estim,0,2);

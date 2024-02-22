@@ -406,6 +406,7 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
         pfun( sprintf('%s/prewarp/m0ref_pwalign.nii.gz',opath2f), sprintf('m0ref'), sprintf('%s/prewarp',opath2f), PipeStruct_aug.(Step)(2:end) );  
     end
     
+    % clear for variable run lengths between subj. etc.
     clear prefix_set Funcfile_set prefix_set_wrp Funcfile_set_wrp;
     
     for nr=1:InputStruct_ssa.N_perf

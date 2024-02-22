@@ -547,12 +547,12 @@ end
                 xp=[];
             end
 
-            %--- plotting stage: to be augmented later ---%
+            %--- plotting stage?
             figure, 
             subplot(1,2,1); title(sprintf('x(%u), negative effects',i));
             plot(X2(:,i), xn,'ok');
-            subplot(1,2,2); title(sprintf('x(%u), positive effects',i));
-            plot(X2(:,i), xp,'ok');
+            subplot(1,2,1); title(sprintf('x(%u), negative effects',i));
+            plot(X2(:,i), xn,'ok');
         end
 
     end
