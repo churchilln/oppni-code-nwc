@@ -22,9 +22,10 @@ NBOOT = 2000;
         y = bsxfun(@rdivide,y+econd,sqrt(sum(y.^2))+econd);
         % run ols regression (sans intercept)
         bsrmat(:,:,bsr) = D * (y / (y'*y));
-        %op   = GLM_model_fmri( D, 0, [],y, [] ); %--deprecated for leanness
-        %bsrmat(:,:,bsr) = op.Beta_signl;
     end
+
+    % no intercept, x and y are centered
+    
     out.bsr     = mean(bsrmat,3)./std(bsrmat,0,3);
     out.bsr_p   = 2*min(cat(3,sum(bsrmat>0,3), sum(bsrmat<0,3)),[],3)./bsr;
    

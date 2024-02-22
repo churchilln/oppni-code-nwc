@@ -28,8 +28,9 @@ k    = size(design, 2);
     Tmap = Beta ./ sqrt( residvar * Xinvdiag(:)' );
 
 
-    % parameters
-    out.tstat    = Tmap;
+    % parameters - discard intercept!
+    
+    out.tstat    = Tmap(:,2:end);
     out.tstat_p  = 2.*tcdf( -abs(out.tstat), n-k-1 ); %2-tailed likelihood 
     
     out.testname = 'glm_tstat';

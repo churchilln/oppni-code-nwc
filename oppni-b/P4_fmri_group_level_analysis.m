@@ -6,7 +6,7 @@ function P4_fmri_group_level_analysis( inputfile, pipelinefile, paramlist, outpa
 %      pipelinefiles : string, giving name of pipeline textfile specifying which pipeline steps to apply to the data
 %          paramlist : string, giving name of parameter file specifying special arguments to use in pipelines
 %            outpath : string, specifying destination directory for processed outputs
-%
+%              param : string, specifying which derived param to analyze 
 %              volno : index number among contrasts to analyze, if multiple ones
 %                      can also use this to specify contrast
 %         design_mat : design matrix in table format; should have header w variable names
@@ -54,7 +54,6 @@ maskS = double(MB.img);
 
 for i=1:numel(subject_list)
 
-
     filepath = [outpath,'/',subject_list{i},'/func_proc_p2/Pipe_',PipeStruct_aug.PNAME{1},'/',ParamStruct_aug.Variable_ID,'/out_analysis.mat'];
     x=load(filepath);
 
@@ -82,9 +81,9 @@ for i=1:numel(subject_list)
                 datamat(:,i) = x.out_analysis.image.(param) * volno(:);
             end
         else
-            volno = regexp( volno,'-','split');
-            bb = str2num( strrep(volno{1},'+',',') );
-            aa = str2num( strrep(volno{2},'+',',') );
+            volno2 = regexp( volno,'-','split');
+            bb = str2num( strrep(volno2{1},'+',',') );
+            aa = str2num( strrep(volno2{2},'+',',') );
             datamat(:,i) = mean(x.out_analysis.image.(param)(:,bb),2) - mean(x.out_analysis.image.(param)(:,aa),2);
         end
     elseif strcmpi( param_type,'mat2d' )
@@ -165,7 +164,7 @@ fprintf('\n=========================================================\n');
 
     % check for bad/missing values
     fprintf('Missing data check, imaging:\n');
-    ixdrop_D = mean(~isfinite(D2),1)>0.10;
+    ixdrop_D = (mean(~isfinite(D2),1)>0.10)';
     fprintf('number of volumes with more than 10 percent of voxels missing: %s\n',sum(ixdrop_D));
     if     mean(ixdrop_D)==0   fprintf('no missing data.')
     elseif mean(ixdrop_D)<0.10 fprintf('less than 10 percent of participants have substantial missing data');
@@ -221,7 +220,7 @@ fprintf('\n=========================================================\n');
     
             strtmp = ['col.',num2str(i),' (',model_contrast{i},') -- '];
 
-            if numel(unique(X2(:,i)))
+            if numel(unique(X2(:,i)))==2
                 strtmp = [strtmp 'binary: '];
                 ncl1= sum( X2(:,i)==min(X2(:,i)) );
                 ncl2= sum( X2(:,i)==max(X2(:,i)) );
@@ -232,7 +231,6 @@ fprintf('\n=========================================================\n');
                 elseif( ncl2/(ncl1+ncl2) < 0.20 )   strtmp = [strtmp ' grp2 constitutes 10-20 pct. of your sample. Unbalanced - proceed with caution!\n'];
                 else  strtmp = [strtmp ' ok.\n'];
                 end       
-                fprintf(strtmp);
             else
                 strtmp = [strtmp 'continuous: '];
                 strtmp = [strtmp, sprintf('skew=%.02f, kurt=%.02f.',skewness(X2(:,i)),kurtosis(X2(:,i)))];
@@ -251,14 +249,15 @@ fprintf('\n=========================================================\n');
                     strtmp = [strtmp ' ok.\n'];
                 end
             end
+            fprintf(strtmp);
         end
         % collinearity
         cctmp = corr(X2);
         cctmp = cctmp .* triu( ones(size(cctmp)), 1);
-        [vx,ix] = max(abs(cctmp));
+        [vx,ix] = max(abs(cctmp(:)));
         if numel(xtmp)>1 && vx>0.75
             [i1,i2]=ind2sub(size(cctmp),ix);
-            error('Redundant predictors: check %s or %s (possibly others)\n',model_contrast{i1},model_contrast{i2});
+            error('Redundant predictors: check %s or %s (possibly others!)\n',model_contrast{i1},model_contrast{i2});
         else
             fprintf('pairwise collin ok!\n')
         end
@@ -409,48 +408,51 @@ vfield = a{pix};
 
 %%
 
+tmaps = out_analysis.(vfield);
+pmaps = out_analysis.(pfield);
+
 if strcmpi( param_type,'image' )
     
     %--1
-    TMPVOL = zeros( [size(out_analysis.submask), size(out_analysis.(vfield),2)] );
-    for i=1:size(out_analysis.(vfield),2)
+    TMPVOL = zeros( [size(out_analysis.submask), size(tmaps,2)] );
+    for i=1:size(tmaps,2)
         tmp = out_analysis.submask;
-        tmp(tmp>0) = out_analysis.(vfield)(:,i);
+        tmp(tmp>0) = tmaps(:,i);
         TMPVOL(:,:,:,i) = tmp;
     end
     nii=MB;
     nii.img = TMPVOL;
     nii.hdr.dime.datatype = 16;
     nii.hdr.hist = MB.hdr.hist;
-    nii.hdr.dime.dim(5) = size(out_analysis.(vfield),2);
+    nii.hdr.dime.dim(5) = size(tmaps,2);
     save_untouch_niiz(nii,[out_folder_name,'/',vfield,'_unthresh.nii']); 
     
     %--2
-    TMPVOL = zeros( [size(out_analysis.submask), size(out_analysis.(vfield),2)] );
-    for i=1:size(out_analysis.(vfield),2)
+    TMPVOL = zeros( [size(out_analysis.submask), size(tmaps,2)] );
+    for i=1:size(tmaps,2)
         tmp = out_analysis.submask;
-        tmp(tmp>0) = out_analysis.(pfield)(:,i);
+        tmp(tmp>0) = pmaps(:,i);
         TMPVOL(:,:,:,i) = tmp;
     end
     nii=MB;
     nii.img = TMPVOL;
     nii.hdr.dime.datatype = 16;
     nii.hdr.hist = MB.hdr.hist;
-    nii.hdr.dime.dim(5) = size(out_analysis.(vfield),2);
+    nii.hdr.dime.dim(5) = size(tmaps,2);
     save_untouch_niiz(nii,[out_folder_name,'/',pfield,'_unthresh.nii']); 
     
     if strcmpi(THRESH_METHOD{1},'FDR')
-        [~,th] = fdr( out_analysis.(pfield),'p',THRESH_METHOD{2},0 );
-        numaps = out_analysis.(vfield) .* th;
+        [~,th] = fdr( pmaps,'p',THRESH_METHOD{2},0 );
+        numaps = tmaps .* th;
     elseif strcmpi(THRESH_METHOD{1},'CLUST')
-        for i=1:size(out_analysis.(vfield),2)
+        for i=1:size(tmaps,2)
            tmp = out_analysis.submask;
-           tmp(tmp>0) = double(out_analysis.(pfield)(:,i)<=0.005) .* out_analysis.(vfield)(:,i);
+           tmp(tmp>0) = double(pmaps(:,i)<=0.005) .* tmaps(:,i);
            tmp = clust_up( tmp, THRESH_METHOD{2} );
            numaps(:,i) = tmp(out_analysis.submask>0);
         end
     elseif strcmpi(THRESH_METHOD{1},'UNCORR')
-        numaps = out_analysis.(vfield) .* double(out_analysis.(pfield)<=THRESH_METHOD{2});
+        numaps = tmaps .* double(pmaps<=THRESH_METHOD{2});
     else
         numaps = [];
     end
@@ -459,8 +461,8 @@ if strcmpi( param_type,'image' )
         disp('number of significant voxels:');
         sum( numaps ~= 0 ),
         
-        TMPVOL = zeros( [size(out_analysis.submask), size(out_analysis.(vfield),2)] );
-        for i=1:size(out_analysis.(vfield),2)
+        TMPVOL = zeros( [size(out_analysis.submask), size(tmaps,2)] );
+        for i=1:size(tmaps,2)
             tmp = out_analysis.submask;
             tmp(tmp>0) = numaps(:,i);
             TMPVOL(:,:,:,i) = tmp;
@@ -469,33 +471,31 @@ if strcmpi( param_type,'image' )
         nii.img = TMPVOL;
         nii.hdr.dime.datatype = 16;
         nii.hdr.hist = MB.hdr.hist;
-        nii.hdr.dime.dim(5) = size(out_analysis.(vfield),2);
+        nii.hdr.dime.dim(5) = size(tmaps,2);
         save_untouch_niiz(nii,[out_folder_name,'/',vfield,'_',THRESH_METHOD{1},'.nii']); 
     end
 
 elseif strcmpi( param_type,'mat2d' )
 
     %--1
-    tmaps = out_analysis.(vfield);
     for i=1:size(tmaps,2)
         tmap2d = reshape(tmaps(:,i),matdims);
         writematrix(tmap2d,[out_folder_name,'/',vfield,'_2d_',num2str(i),'_unthresh.txt']); 
     end
 
     %--2
-    pmaps = out_analysis.(pfield);
     for i=1:size(tmaps,2)
         pmap2d = reshape(pmaps(:,i),matdims);
         writematrix(pmap2d,[out_folder_name,'/',pfield,'_2d_',num2str(i),'_unthresh.txt']); 
     end
     
     if strcmpi(THRESH_METHOD{1},'FDR')
-        [~,th] = fdr( out_analysis.(pfield),'p',THRESH_METHOD{2},0 );
-        numaps = out_analysis.(vfield) .* th;
+        [~,th] = fdr( pmaps,'p',THRESH_METHOD{2},0 );
+        numaps = tmaps .* th;
     elseif strcmpi(THRESH_METHOD{1},'CLUST')
         error('cannot spatially cluster conn matrices')
     elseif strcmpi(THRESH_METHOD{1},'UNCORR')
-        numaps = out_analysis.(vfield) .* double(out_analysis.(pfield)<=THRESH_METHOD{2});
+        numaps = tmaps .* double(pmaps<=THRESH_METHOD{2});
     else
         numaps = [];
     end
@@ -517,23 +517,25 @@ end
     score_arr = NaN*ones( numel(subject_list), 2*size(tmaps,2) );
 
     if strcmpi(THRESH_METHOD{1},'FDR')
-        [~,th] = fdr( out_analysis.(pfield),'p',THRESH_METHOD{2},0 );
-        numaps = out_analysis.(vfield) .* th;
+        [~,th] = fdr( pmaps,'p',THRESH_METHOD{2},0 );
+        numaps = tmaps .* th;
     elseif strcmpi(THRESH_METHOD{1},'CLUST')
-        for i=1:size(out_analysis.(vfield),2)
+        for i=1:size(tmaps,2)
            tmp = out_analysis.submask;
-           tmp(tmp>0) = double(out_analysis.(pfield)(:,i)<=0.005) .* out_analysis.(vfield)(:,i);
+           tmp(tmp>0) = double(pmaps(:,i)<=0.005) .* tmaps(:,i);
            tmp = clust_up( tmp, THRESH_METHOD{2} );
            numaps(:,i) = tmp(out_analysis.submask>0);
         end
     elseif strcmpi(THRESH_METHOD{1},'UNCORR')
-        numaps = out_analysis.(vfield) .* double(out_analysis.(pfield)<=THRESH_METHOD{2});
+        numaps = tmaps .* double(pmaps<=THRESH_METHOD{2});
     else
         numaps = [];
     end
     %--3
+    xn=[];
+    xp=[];
     if ~isempty(numaps)
-        for i=1:size(numaps,2)
+        for i=1:size(tmaps,2)
             if sum(numaps(:,i)<0)>1
                 score_arr( :, 2*(i-1)+1 ) = mean( datamat(numaps(:,i)<0,:),1 );
                 xn= mean( D2(numaps(:,i)<0,:),1 );
@@ -542,17 +544,21 @@ end
             end
             if sum(numaps(:,i)>0)>1
                 score_arr( :, 2*i ) = mean( datamat(numaps(:,i)>0,:),1 );
-                xn= mean( D2(numaps(:,i)>0,:),1 );
+                xp= mean( D2(numaps(:,i)>0,:),1 );
             else
                 xp=[];
             end
 
             %--- plotting stage: to be augmented later ---%
             figure, 
-            subplot(1,2,1); title(sprintf('x(%u), negative effects',i));
+            if ~isempty(xn)
+            subplot(1,2,1); hold on; title(sprintf('x(%u), negative effects',i));
             plot(X2(:,i), xn,'ok');
-            subplot(1,2,2); title(sprintf('x(%u), positive effects',i));
+            end
+            if ~isempty(xp)
+            subplot(1,2,2); hold on; title(sprintf('x(%u), positive effects',i));
             plot(X2(:,i), xp,'ok');
+            end
         end
 
     end

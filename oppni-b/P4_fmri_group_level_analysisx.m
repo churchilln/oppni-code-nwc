@@ -165,7 +165,7 @@ fprintf('\n=========================================================\n');
 
     % check for bad/missing values
     fprintf('Missing data check, imaging:\n');
-    ixdrop_D = mean(~isfinite(D2),1)>0.10;
+    ixdrop_D = (mean(~isfinite(D2),1)>0.10)';
     fprintf('number of volumes with more than 10 percent of voxels missing: %s\n',sum(ixdrop_D));
     if     mean(ixdrop_D)==0   fprintf('no missing data.')
     elseif mean(ixdrop_D)<0.10 fprintf('less than 10 percent of participants have substantial missing data');
@@ -255,10 +255,10 @@ fprintf('\n=========================================================\n');
         % collinearity
         cctmp = corr(X2);
         cctmp = cctmp .* triu( ones(size(cctmp)), 1);
-        [vx,ix] = max(abs(cctmp));
+        [vx,ix] = max(abs(cctmp(:)));
         if numel(xtmp)>1 && vx>0.75
             [i1,i2]=ind2sub(size(cctmp),ix);
-            error('Redundant predictors: check %s or %s (possibly others)\n',model_contrast{i1},model_contrast{i2});
+            warning('Redundant predictors: check %s and %s (possibly other pairs!)\n',model_contrast{i1},model_contrast{i2});
         else
             fprintf('pairwise collin ok!\n')
         end
@@ -514,7 +514,7 @@ end
 
 %% storing scores...
 
-    score_arr = NaN*ones( numel(subject_list), 2*size(tmaps,2) );
+    score_arr = NaN*ones( numel(subject_list), 2*size(numaps,2) );
 
     if strcmpi(THRESH_METHOD{1},'FDR')
         [~,th] = fdr( out_analysis.(pfield),'p',THRESH_METHOD{2},0 );
@@ -532,8 +532,10 @@ end
         numaps = [];
     end
     %--3
+    xn=[];
+    xp=[];
     if ~isempty(numaps)
-        for i=1:size(numaps,2)
+        for i=1:size(numaps,2)-1
             if sum(numaps(:,i)<0)>1
                 score_arr( :, 2*(i-1)+1 ) = mean( datamat(numaps(:,i)<0,:),1 );
                 xn= mean( D2(numaps(:,i)<0,:),1 );
@@ -542,17 +544,21 @@ end
             end
             if sum(numaps(:,i)>0)>1
                 score_arr( :, 2*i ) = mean( datamat(numaps(:,i)>0,:),1 );
-                xn= mean( D2(numaps(:,i)>0,:),1 );
+                xp= mean( D2(numaps(:,i)>0,:),1 );
             else
                 xp=[];
             end
 
-            %--- plotting stage?
+            %--- plotting stage: to be augmented later ---%
             figure, 
-            subplot(1,2,1); title(sprintf('x(%u), negative effects',i));
+            if ~isempty(xn);
+            subplot(1,2,1); title(sprintf('x(%u), negative effects',i)); hold on;
             plot(X2(:,i), xn,'ok');
-            subplot(1,2,1); title(sprintf('x(%u), negative effects',i));
-            plot(X2(:,i), xn,'ok');
+            end
+            if ~isempty(xp)
+            subplot(1,2,2); title(sprintf('x(%u), positive effects',i)); hold on;
+            plot(X2(:,i), xp,'ok');
+            end
         end
 
     end
