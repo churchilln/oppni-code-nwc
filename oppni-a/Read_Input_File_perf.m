@@ -112,6 +112,9 @@ while ischar(tline)
              filestring_temp = {filestring_temp};
         else filestring_temp = regexp(filestring_temp,',','split'); 
         end
+        if numel(filestring_temp) ~= InputStruct(ns).N_perf
+            error('number of TASK args does not match number of perf runs. Check line:\n\t%s\n',tline);
+        end
         for nr=1:InputStruct(ns).N_perf
             InputStruct(ns).prun(nr).TASK_filename = filestring_temp{nr};
         end

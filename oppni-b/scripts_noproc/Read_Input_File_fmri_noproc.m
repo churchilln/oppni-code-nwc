@@ -1,4 +1,4 @@
-function InputStruct = Read_Input_File_fmri(inputfile)
+function InputStruct = Read_Input_File_fmri_noproc(inputfile)
 %
 % InputStruct(subj).(field) = string or numeric value
 % InputStruct(subj).arun(func.run).(field) = cell array of strings or numeric values 
@@ -33,15 +33,6 @@ while ischar(tline)
         isrt = strfind( upper(tline),[fieldname,'='] ) + (numel(fieldname)+1);
         iend = ispaces(ispaces>=isrt);
         InputStruct(ns).PREFIX = tline(isrt:iend(1)); % take first ending
-    else
-        error('input file line does not contain mandatory %s field\n\t%s\n',fieldname,tline);
-    end
-
-    fieldname = 'TPATTERN';
-    if contains( upper(tline), strcat(fieldname,'=') )
-        isrt = strfind( upper(tline),[fieldname,'='] ) + (numel(fieldname)+1);
-        iend = ispaces(ispaces>=isrt);
-        InputStruct(ns).TPATTERN = tline(isrt:iend(1)); % take first ending
     else
         error('input file line does not contain mandatory %s field\n\t%s\n',fieldname,tline);
     end
@@ -104,6 +95,50 @@ while ischar(tline)
         InputStruct(ns).frun(nr).TASK_filename = [];
     end
 
+    fieldname = 'MPE';
+    if contains( upper(tline), strcat(fieldname,'=') )
+        isrt = strfind( upper(tline),[fieldname,'='] ) + (numel(fieldname)+1);
+        iend = ispaces(ispaces>=isrt);
+        filestring_temp = tline(isrt:iend(1)); % take first ending
+        if  ~contains(filestring_temp,',')
+             filestring_temp = {filestring_temp};
+        else filestring_temp = regexp(filestring_temp,',','split'); 
+        end
+        if numel(filestring_temp) ~= InputStruct(ns).N_func
+            error('number of MPE args does not match number of functional runs. Check line:\n\t%s\n',tline);
+        end
+        for nr=1:InputStruct(ns).N_func
+            InputStruct(ns).frun(nr).MPE_filename = filestring_temp{nr};
+        end
+    else
+        warning('input file line does not contain optional %s field - no model-based motion correction\n\t%s\n',fieldname,tline);
+        for nr=1:InputStruct(ns).N_func
+            InputStruct(ns).frun(nr).MPE_filename = [];
+        end
+    end
+
+    fieldname = 'FMASK';
+    if contains( upper(tline), strcat(fieldname,'=') )
+        isrt = strfind( upper(tline),[fieldname,'='] ) + (numel(fieldname)+1);
+        iend = ispaces(ispaces>=isrt);
+        filestring_temp = tline(isrt:iend(1)); % take first ending
+        if  ~contains(filestring_temp,',')
+             filestring_temp = {filestring_temp};
+        else filestring_temp = regexp(filestring_temp,',','split'); 
+        end
+        if numel(filestring_temp) ~= InputStruct(ns).N_func
+            error('number of FMASK args does not match number of functional runs. Check line:\n\t%s\n',tline);
+        end
+        for nr=1:InputStruct(ns).N_func
+            InputStruct(ns).frun(nr).FMASK_filename = filestring_temp{nr};
+        end
+    else
+        warning('input file line does not contain optional %s field - no pre functional masking\n\t%s\n',fieldname,tline);
+        for nr=1:InputStruct(ns).N_func
+            InputStruct(ns).frun(nr).FMASK_filename = [];
+        end
+    end
+
     fieldname = 'PHYSIO';
     if contains( upper(tline), strcat(fieldname,'=') )
         isrt = strfind( upper(tline),[fieldname,'='] ) + (numel(fieldname)+1);
@@ -159,46 +194,6 @@ while ischar(tline)
     end
 
     %% anatomical data and derivatives...
-
-    fieldname = 'ANAT';
-    if contains( upper(tline), strcat(fieldname,'=') )
-        isrt = strfind( upper(tline),[fieldname,'='] ) + (numel(fieldname)+1);
-        iend = ispaces(ispaces>=isrt);
-        filestring_temp = tline(isrt:iend(1)); % take first ending
-        if  ~contains(filestring_temp,',')
-             filestring_temp = {filestring_temp};
-        else filestring_temp = regexp(filestring_temp,',','split'); 
-        end
-        InputStruct(ns).N_anat = numel( filestring_temp ); % number of functional runs
-        for nr=1:InputStruct(ns).N_anat
-            InputStruct(ns).arun(nr).ANAT_filename   = filestring_temp{nr};
-        end
-    else
-        error('input file line does not contain mandatory %s field\n\t%s\n',fieldname,tline);
-    end
-
-    fieldname = 'ZCLIP';
-    if contains( upper(tline), strcat(fieldname,'=') )
-        isrt = strfind( upper(tline),[fieldname,'='] ) + (numel(fieldname)+1);
-        iend = ispaces(ispaces>=isrt);
-        filestring_temp = tline(isrt:iend(1)); % take first ending
-        if  ~contains(filestring_temp,',')
-             filestring_temp = {filestring_temp};
-        else filestring_temp = regexp(filestring_temp,',','split'); 
-        end
-        for nr=1:InputStruct(ns).N_anat
-            if strcmpi(filestring_temp{nr},'AUTO')
-                InputStruct(ns).arun(nr).ZCLIP_thr  = 'AUTO';
-            else
-                InputStruct(ns).arun(nr).ZCLIP_thr  = str2num(filestring_temp{nr});
-            end
-        end
-    else
-        warning('input file line does not contain optional %s field - no clipping of T1 scan\n\t%s\n',fieldname,tline);
-        for nr=1:InputStruct(ns).N_anat
-            InputStruct(ns).arun(nr).ZCLIP_thr  = 'NONE';
-        end
-    end
 
     if( isempty(strfind(inputfile,'=')) )    
         tline = fgetl(fid);

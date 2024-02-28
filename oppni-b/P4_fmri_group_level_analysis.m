@@ -26,7 +26,11 @@ function P4_fmri_group_level_analysis( inputfile, pipelinefile, paramlist, outpa
 
 
 % initializing structure and running checkes
+if strcmpi(pipelinefile,'noproc')
+[subject_list, ~, PipeStruct_aug, ParamStruct_aug] = P0_fmri_populateDirectories_noproc( inputfile, pipelinefile, paramlist, outpath );
+else
 [subject_list, ~, PipeStruct_aug, ParamStruct_aug] = P0_fmri_populateDirectories( inputfile, pipelinefile, paramlist, outpath );
+end
 
 if isempty(censor)
     censor = ones(numel(subject_list),1);
