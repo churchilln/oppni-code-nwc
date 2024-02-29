@@ -332,11 +332,7 @@ if strcmpi( analysis_model, 'SMOOTH_EST')
     save_untouch_niiz(nii,[out_folder_name,'/DMAT_for_SMOOTH_EST.nii']); 
     save_untouch_niiz( MB,[out_folder_name,'/MASK_for_SMOOTH_EST.nii']); 
     
-    unix(sprintf('3dFWHMx -mask %s -input %s -demed > %s',[out_folder_name,'/MASK_for_SMOOTH_EST.nii'],[out_folder_name,'/DMAT_for_SMOOTH_EST.nii'],[out_folder_name,'/fwhm_file']));
-    xfwhm = load([out_folder_name,'/fwhm_file']);
-    unix('3dClustSim -mask %s -acf %.03f %.03f %.03f',[out_folder_name,'/MASK_for_SMOOTH_EST.nii'], x(2,1),x(2,2),x(2,3) );
-
-    return;
+    unix(sprintf(''))
 
 elseif strcmpi( analysis_model, 'GLM' )
     
