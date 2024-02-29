@@ -557,13 +557,31 @@ end
             figure, 
             if ~isempty(xn)
             subplot(1,2,1); hold on; title(sprintf('x(%u), negative effects',i));
-            plot(X2(:,i), xn,'ok');
+            plot(X2(:,i), xn,'ok','markerfacecolor',[0.5 0.5 0.5]);
+            xlim([min(X2(:,i)) max(X2(:,i))] .* 0.1*range(X2(:,i)))
             end
             if ~isempty(xp)
             subplot(1,2,2); hold on; title(sprintf('x(%u), positive effects',i));
-            plot(X2(:,i), xp,'ok');
+            plot(X2(:,i), xp,'ok','markerfacecolor',[0.5 0.5 0.5]);
+            xlim([min(X2(:,i)) max(X2(:,i))] .* 0.1*range(X2(:,i)))
             end
         end
 
     end
-    writematrix(score_arr,[out_folder_name,'/score_array_thresh_',num2str(i),'_',THRESH_METHOD{1},'.txt']); 
+
+    fhdd=[];
+    for i=1:numel(model_contrast)
+        fhdd=[fhdd,model_contrast{i},'(-)\t',model_contrast{i},'(+)\t'];
+    end
+    fhdd=[fhdd(1:end-2),'\n'];
+
+    fstr='%.06f\t';
+    fstr = repmat(fstr,1,size(score_arr,2));
+    fstr = [fstr(1:end-2),'\n'];
+    
+    fid = fopen([out_folder_name,'/score_array_contr.',num2str(numel(model_contrast)),'_thresh.',THRESH_METHOD{1},'-',num2str(THRESH_METHOD{2}),'.txt'],'w');
+    fprintf(fid,fhdd);
+    fprintf(fid,fstr,score_arr);
+    fclose(fid);
+
+%     writematrix(score_arr,[out_folder_name,'/score_array_thresh_',num2str(i),'_',THRESH_METHOD{1},'.txt']); 
