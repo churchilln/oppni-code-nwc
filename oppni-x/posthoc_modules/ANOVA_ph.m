@@ -1,4 +1,4 @@
-function out = ANOVA_gl( datamat, design )
+function out = ANOVA_ph( datamat, design )
 
 if( size(design,2)==1 ) %% 1-way anova
 

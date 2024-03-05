@@ -29,7 +29,7 @@ function P4_fmri_group_level_analysis( inputfile, pipelinefile, paramlist, outpa
 
 % initializing structure and running checkes
 if strcmpi(pipelinefile,'noproc')
-[subject_list, ~, PipeStruct_aug, ParamStruct_aug] = P0_fmri_populateDirectories_noproc( inputfile, pipelinefile, paramlist, outpath );
+[subject_list, ~, PipeStruct_aug, ParamStruct_aug] = P0_fmri_populateDirectories_noproc( inputfile, paramlist, outpath );
 else
 [subject_list, ~, PipeStruct_aug, ParamStruct_aug] = P0_fmri_populateDirectories( inputfile, pipelinefile, paramlist, outpath );
 end
@@ -208,7 +208,7 @@ fprintf('\n=========================================================\n');
     else
         ix = find( sum(X2.^2,1) < eps );
         if ~isempty(ix)
-            strtmp = []; for i=1:numel(ix) [strtmp, ', ', model_contrast{i}]; end
+            strtmp = []; for i=1:numel(ix) [strtmp, ', ', model_contrast{ix(i)}]; end
             error('empty columns in: %s\n',strtmp(3:end));
         else
             fprintf('no empty columns!\n');
@@ -217,7 +217,7 @@ fprintf('\n=========================================================\n');
         if numel(xtmp)>1 && max(xtmp)/min(xtmp) > 1E6
             [~,ix1]=min(xtmp);
             [~,ix2]=max(xtmp);
-            error('Numeric scaling issue likely to give poor results: check %s or %s (possibly others)\n',model_contrast{i1},model_contrast{i2});
+            error('Numeric scaling issue likely to give poor results: check %s or %s (possibly others)\n',model_contrast{ix1},model_contrast{ix2});
         else
             fprintf('scaling ok!\n')
         end
@@ -286,20 +286,21 @@ fprintf('\n=========================================================\n');
     
     figure;
     dtmp = D2 - mean(D2,2);
-    subplot(3,2,1); imagesc( dtmp ); title('mean-centered')
+    subplot(2,3,1); imagesc( dtmp ); title('mean-centered')
     dtmp = dtmp./std(dtmp,0,2);
-    subplot(3,2,2); imagesc( dtmp ); title('var-normed')
+    subplot(2,3,2); imagesc( dtmp ); title('var-normed')
     dtmp = dtmp.^2;
-    subplot(3,2,2); imagesc( dtmp ); title('squared deviation')
+    subplot(2,3,3); imagesc( dtmp ); title('squared deviation')
     
     dif = bsxfun(@minus,D2,mean(D2,2,'omitnan')).^2; % deviation from mean map
     outl = mean(dif,1)';                       % mean deviation (averaging over voxels)
     outl = outl./max(outl);                    % renorming deviation
-    figure;
-    subplot(3,2,2); bar( outl ); ylim( [0 1.01]);
+    subplot(2,3,2); bar( outl ); ylim( [0 1.01]);
+    title('rms-deviation (big value=probable outlier)');
     PARMHAT = gamfit(outl(isfinite(outl)));    % gamma distribution fitting 
     Pgam = gamcdf(outl,PARMHAT(1),PARMHAT(2)); % probability on gammas
-    subplot(3,2,4); bar( 1-Pgam(isfinite(outl)) ); ylim( [0 0.05]);
+    subplot(2,3,4); bar( 1-Pgam(isfinite(outl)) ); ylim( [0 0.05]);
+    title('rms-dev p-value (small value=probable outlier)');
     [p th]=fdr(1-Pgam,'p',0.05,0);             % signifiant outliers FDR=0.05
     if sum(th)<=0
         fprintf('no significant outlier volumes!\n');
@@ -318,9 +319,9 @@ fprintf('=========================================================\n\n');
 if strcmpi( analysis_model, 'SMOOTH_EST')
 
     %--2
-    TMPVOL = zeros( [size(out_analysis.submask), size(D2,2)] );
-    for i=1:size(tmaps,2)
-        tmp = out_analysis.submask;
+    TMPVOL = zeros( [size(x.out_analysis.submask), size(D2,2)] );
+    for i=1:size(D2,2)
+        tmp = x.out_analysis.submask;
         tmp(tmp>0) = D2(:,i);
         TMPVOL(:,:,:,i) = tmp;
     end
@@ -328,7 +329,7 @@ if strcmpi( analysis_model, 'SMOOTH_EST')
     nii.img = TMPVOL;
     nii.hdr.dime.datatype = 16;
     nii.hdr.hist = MB.hdr.hist;
-    nii.hdr.dime.dim(5) = size(tmaps,2);
+    nii.hdr.dime.dim(5) = size(D2,2);
     save_untouch_niiz(nii,[out_folder_name,'/DMAT_for_SMOOTH_EST.nii']); 
     save_untouch_niiz( MB,[out_folder_name,'/MASK_for_SMOOTH_EST.nii']); 
     

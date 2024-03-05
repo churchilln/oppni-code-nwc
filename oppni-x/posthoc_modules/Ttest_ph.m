@@ -1,4 +1,4 @@
-function out = Ttest_gl( datamat, design )
+function out = Ttest_ph( datamat, design )
 %
 % . T-test analysis, compares 1-group rel. 0, or between 2 groups
 %

@@ -1,4 +1,4 @@
-function out = ANOVA_np_gl( X0 )
+function out = ANOVA_np_ph( X0 )
 %
 % non-parametric anova ... order (V x S x T)
 %

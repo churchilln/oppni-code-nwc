@@ -1036,6 +1036,7 @@ for ns=subj_list_for_proc % step through func-proc (block-2)
 
     if anymiss==0 && maskisnew==0 % we can skip all of this, if data are processed and masks havent been re-constructed
         disp('Files found, no update to mask(s). Skipping last proc. stage!')
+        
     else
 
         %--> previously specified opaths over here?

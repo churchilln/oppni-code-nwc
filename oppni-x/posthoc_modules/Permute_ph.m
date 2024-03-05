@@ -1,4 +1,4 @@
-function out = Permute_gl( datamat, design, estim )
+function out = Permute_ph( datamat, design, estim )
 %
 % . Bootstrapped analysis, compares 1-group rel. 0, or between 2 groups
 %
