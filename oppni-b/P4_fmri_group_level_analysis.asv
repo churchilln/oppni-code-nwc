@@ -581,16 +581,6 @@ end
 
 %%          %--- plotting stage: to be augmented later ---%
             figure, 
-% %             if ~isempty(xn)
-% %             subplot(1,2,1); hold on; title(sprintf('x(%u), negative effects',i));
-% %             plot(X2(:,i), xn,'ok','markerfacecolor',[0.5 0.5 0.5]);
-% %             xlim([min(X2(:,i))-0.1*range(X2(:,i)), max(X2(:,i))+0.15*range(X2(:,i))])
-% %             end
-% %             if ~isempty(xp)
-% %             subplot(1,2,2); hold on; title(sprintf('x(%u), positive effects',i));
-% %             plot(X2(:,i), xp,'ok','markerfacecolor',[0.5 0.5 0.5]);
-% %             xlim([min(X2(:,i))-0.1*range(X2(:,i)), max(X2(:,i))+0.15*range(X2(:,i))])
-% %             end
             
             if ~isempty(xn)
                 subplot(1,2,1); hold on; title(sprintf('predictor #%u=%s, Neg. effects',i,model_contrast{i}));
@@ -609,7 +599,7 @@ end
                     % case1: both binary
                         xolb = xol==max(xol);
                         xnub = xnu==max(xnu);
-                        out = nboxplots( {xp( xnub & ~xolb ), xp( ~xnub & ~xolb ); xp( xnub & xolb ), xp( ~xnub & xolb ) } );
+                        out = nboxplots( {xn( ~xnub & ~xolb ), xn( ~xnub & xolb ); xn( xnub & ~xolb ), xn( xnub & xolb ) } );
                     elseif numel(unique(xol))==2
                     % case2: one bin/one contin
                         xolb = xol==max(xol);
@@ -634,12 +624,28 @@ end
                         out = nregplots( X2(:,i), xp );
                     end
                 else
-
+                    xol = X2_sub(:,i,1);
+                    xnu = X2_sub(:,i,2);
+                    %
+                    if numel(unique(xol))==2 && numel(unique(xnu))==2
+                    % case1: both binary
+                        xolb = xol==max(xol);
+                        xnub = xnu==max(xnu);
+                        out = nboxplots( {xp( ~xnub & ~xolb ), xp( ~xnub & xolb ); xp( xnub & ~xolb ), xp( xnub & xolb ) } );
+                    elseif numel(unique(xol))==2
+                    % case2: one bin/one contin
+                        xolb = xol==max(xol);
+                        out = nregplots( xnu(~xolb), xp(~xolb),[], xnu(xolb), xp(xolb) );
+                    elseif numel(unique(xnu))==2
+                        error('if interaction is mixed binary continuous, swap the ordering -- binary goes first!')
+                    else
+                    % case3: both contin
+                        xol = X2_sub(:,i,1);
+                        xnu = X2_sub(:,i,2);
+                        out = nregplots( xnu(xol<prctile(xol,40)), xp(xol<prctile(xol,40)),[], xnu(xol>prctile(xol,60)), xp(xol>prctile(xol,60)) );
+                    end
                 end
             end
-
-%             out = nregplots( x, y, coef_distr, arg1,arg2,arg3  )
-%             out = nboxplots( xset, xset_distr, connectlin, xctl, xctl_distr, color_set1, color_set2 )
         end
 
     end

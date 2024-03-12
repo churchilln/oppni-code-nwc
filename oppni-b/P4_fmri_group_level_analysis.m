@@ -93,7 +93,7 @@ for i=1:numel(subject_list)
             datamat(:,i) = mean(x.out_analysis.image.(param)(:,bb),2) - mean(x.out_analysis.image.(param)(:,aa),2);
         end
     elseif strcmpi( param_type,'mat2d' )
-        if ~isempty(volno) error('condition constrasts unsupported for connectivity arrays'); end
+        if ~isempty(volno) error('condition constrasts unsupported for connectivity arrays! volno should be empty (volno=[])!\n'); end
         datamat(:,i) = reshape( x.out_analysis.mat2d.(param), [],1);
     else
         error('??')
@@ -172,10 +172,10 @@ fprintf('\n=========================================================\n');
     fprintf('Missing data check, imaging:\n');
     ixdrop_D = (mean(~isfinite(D2),1)>0.10)';
     fprintf('number of volumes with more than 10 percent of voxels missing: %s\n',sum(ixdrop_D));
-    if     mean(ixdrop_D)==0   fprintf('no missing data.')
-    elseif mean(ixdrop_D)<0.10 fprintf('less than 10 percent of participants have substantial missing data');
-    elseif mean(ixdrop_D)>0.10 warning('more than 10 percent of participants have substantial missing data');
-    elseif mean(ixdrop_D)>0.20   error('more than 20 percent of participants have substantial missing data. Halting!');
+    if     mean(ixdrop_D)==0   fprintf('no missing data.\n')
+    elseif mean(ixdrop_D)<0.10 fprintf('less than 10 percent of participants have substantial missing data.\n');
+    elseif mean(ixdrop_D)>0.10 warning('more than 10 percent of participants have substantial missing data.\n');
+    elseif mean(ixdrop_D)>0.20   error('more than 20 percent of participants have substantial missing data. Halting!\n');
     end
     fprintf('Missing data check, design matrix:\n');
     if isempty(X2)
@@ -184,10 +184,10 @@ fprintf('\n=========================================================\n');
     else
         ixdrop_X = ~isfinite(mean(X2,2));
         fprintf('number of design rows with missing data: %s\n',sum(ixdrop_X));
-        if     mean(ixdrop_X)==0   fprintf('no missing data.')
-        elseif mean(ixdrop_X)<0.10 fprintf('less than 10 percent of participants have substantial missing data');
-        elseif mean(ixdrop_X)>0.10 warning('more than 10 percent of participants have substantial missing data');
-        elseif mean(ixdrop_X)>0.20   error('more than 20 percent of participants have substantial missing data. Halting!');
+        if     mean(ixdrop_X)==0   fprintf('no missing data.\n')
+        elseif mean(ixdrop_X)<0.10 fprintf('less than 10 percent of participants have substantial missing data.\n');
+        elseif mean(ixdrop_X)>0.10 warning('more than 10 percent of participants have substantial missing data.\n');
+        elseif mean(ixdrop_X)>0.20   error('more than 20 percent of participants have substantial missing data. Halting!\n');
         end
     end
     fprintf('number of datapoints dropped, total: %u (from original %u)\n',sum(ixdrop_X | ixdrop_D),size(D2,2) );
@@ -578,19 +578,11 @@ end
             else
                 xp=[];
             end
+            xn=xn(:);
+            xp=xp(:);
 
 %%          %--- plotting stage: to be augmented later ---%
             figure, 
-% %             if ~isempty(xn)
-% %             subplot(1,2,1); hold on; title(sprintf('x(%u), negative effects',i));
-% %             plot(X2(:,i), xn,'ok','markerfacecolor',[0.5 0.5 0.5]);
-% %             xlim([min(X2(:,i))-0.1*range(X2(:,i)), max(X2(:,i))+0.15*range(X2(:,i))])
-% %             end
-% %             if ~isempty(xp)
-% %             subplot(1,2,2); hold on; title(sprintf('x(%u), positive effects',i));
-% %             plot(X2(:,i), xp,'ok','markerfacecolor',[0.5 0.5 0.5]);
-% %             xlim([min(X2(:,i))-0.1*range(X2(:,i)), max(X2(:,i))+0.15*range(X2(:,i))])
-% %             end
             
             if ~isempty(xn)
                 subplot(1,2,1); hold on; title(sprintf('predictor #%u=%s, Neg. effects',i,model_contrast{i}));
@@ -615,7 +607,7 @@ end
                         xolb = xol==max(xol);
                         out = nregplots( xnu(~xolb), xn(~xolb),[], xnu(xolb), xn(xolb) );
                     elseif numel(unique(xnu))==2
-                        error('if interaction is mixed binary continuous, swap the ordering -- binary goes first!')
+                        error('interaction %s is mixed binary continuous, swap the ordering -- binary goes first!',model_contrast{i})
                     else
                     % case3: both contin
                         xol = X2_sub(:,i,1);
@@ -647,7 +639,7 @@ end
                         xolb = xol==max(xol);
                         out = nregplots( xnu(~xolb), xp(~xolb),[], xnu(xolb), xp(xolb) );
                     elseif numel(unique(xnu))==2
-                        error('if interaction is mixed binary continuous, swap the ordering -- binary goes first!')
+                        error('interaction %s is mixed binary continuous, swap the ordering -- binary goes first!',model_contrast{i})
                     else
                     % case3: both contin
                         xol = X2_sub(:,i,1);
@@ -656,9 +648,6 @@ end
                     end
                 end
             end
-
-%             out = nregplots( x, y, coef_distr, arg1,arg2,arg3  )
-%             out = nboxplots( xset, xset_distr, connectlin, xctl, xctl_distr, color_set1, color_set2 )
         end
 
     end
@@ -677,5 +666,3 @@ end
     fprintf(fid,fhdd);
     fprintf(fid,fstr,score_arr);
     fclose(fid);
-
-%     writematrix(score_arr,[out_folder_name,'/score_array_thresh_',num2str(i),'_',THRESH_METHOD{1},'.txt']); 
