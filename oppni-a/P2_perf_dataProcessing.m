@@ -67,10 +67,10 @@ pipeline_struct = check_perf_processing_model( PipeStruct_aug );
 % Now configuring param defaults if unspecified
 %
 if ~isfield(ParamStruct_aug,'INIMOT')
-    ParamStruct_aug.INIMOT='OP1';
+    ParamStruct_aug.INIMOT={'OP1',[]};
 end
 if ~isfield(ParamStruct_aug,'ROIMASK')
-    ParamStruct_aug.ROIMASK='OP1';
+    ParamStruct_aug.ROIMASK={'OP1',[]};
 end
 
 
@@ -325,7 +325,7 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
 
         % INIMOT is constructing some preliminary estimates of displacement -- finds the minimum-displacement volume for motion correction later 
         % **** THIS IS ONLY FOR TCFILT (MAYBE OTHER STUFF?) AT THE MOMENT!
-        if strcmpi(ParamStruct_aug.INIMOT,'OP1')
+        if strcmpi(ParamStruct_aug.INIMOT{1},'OP1')
             motref_0rel = inimot_OP1( sprintf('%s/perf%u%s.nii.gz',opath0,nr,drop_tag), sprintf('perf%u',nr), sprintf('%s/init_mot_estim',opath1f) );
         else
             error('unrecognized initial motion estimator?!')

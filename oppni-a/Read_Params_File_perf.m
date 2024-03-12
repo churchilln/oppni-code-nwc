@@ -30,7 +30,8 @@ end
 % ANALYSIS/CONTRAST/VOXRES/TEMPLATE --> the usual
 % KM.. --> kinetic modelling parameters
 steplist = {'PERF_MODEL','SUBTRACT_TYPE','ANALYSIS','CONTRAST','VOXRES','TEMPLATE','INIMOT','ROIMASK','KM_BLOODT1','KM_BLOODT2S','KM_PARCOEF','KM_PDRAT','KM_LABEFF','KM_QTI'};
-mandatory= [ 1,          1,              1,         1,         1,       1,         0,       0,        0,           0,            0,           0,         0,          0,      ];
+mandatory= [ 1,          1,              1,         1,         1,       1,         0,       0,        0,           0,            0,           0,         0,          0       ];
+procstyle= [ 0,          0,              0,         0,         0,       0,         1,       1,        0,           0,            0,           0,         0,          0       ]; % -if multiple positional args, in same style as proc
 
 ileft  = strfind( paramstring, '[' );
 iright = strfind( paramstring, ']' );
@@ -47,6 +48,22 @@ for(s=1:length(steplist))
     else
         bleft       = ileft (ileft >iStep);   bleft= bleft(1);
         bright      = iright(iright>iStep);  bright=bright(1);
-        ParamStruct.(steplist{s}) = paramstring((bleft+1):(bright-1));
+
+        if procstyle(s)==0
+            ParamStruct.(steplist{s}) = paramstring((bleft+1):(bright-1));
+        else
+            pipeargs    = regexp(  paramstring((bleft+1):(bright-1))  ,',','split');
+            if sum(cellfun(@isempty,pipeargs))>0
+                error('pipe step %s has empty positional argument?',steplist{s});
+            end
+            ParamStruct.(steplist{s}) = pipeargs;
+        end
+    end
+end
+
+%--> append empty field in position 2 if undeclared / for general modularity
+for(s=1:length(steplist))
+    if procstyle(s)==1 && numel(ParamStruct.(steplist{s}))==1
+        ParamStruct.(steplist{s}){2} = [];
     end
 end

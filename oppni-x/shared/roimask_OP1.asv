@@ -1,4 +1,4 @@
-function roimask_OP1( pcsf_map, pwm_map, pgm_map, tsd_map, brain_mask, odir, ParamCell )
+function roimask_OP1( pcsf_map, pwm_map, pgm_map, tsd_map, brain_mask, odir, spec_set )
 %
 % functional roi masking..
 %
@@ -6,19 +6,13 @@ function roimask_OP1( pcsf_map, pwm_map, pgm_map, tsd_map, brain_mask, odir, Par
 %
 % --> checks for consistency of roimask!
 
-if nargin<7 || isempty(ParamCell)
+if nargin<7 || isempty(spec_set)
     spec_set=struct();
     spec_set.gm_smo      = 0.85;
     spec_set.csf_pthresh = 0.90;
     spec_set.wm_pthresh  = 0.90;
     spec_set.gm_rthresh  = 0.33;
     spec_set.tsd_rthresh = 0.90;
-else
-    spec_set.gm_smo      = str2num( ParamCell{1} );
-    spec_set.csf_pthresh = str2num( ParamCell{2} );
-    spec_set.wm_pthresh  = str2num( ParamCell{3} );
-    spec_set.gm_rthresh  = str2num( ParamCell{4} );
-    spec_set.tsd_rthresh = str2num( ParamCell{5} );
 end
 
 Mw = load_untouch_niiz(brain_mask);

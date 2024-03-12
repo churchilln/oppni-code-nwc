@@ -609,7 +609,7 @@ end
                     % case1: both binary
                         xolb = xol==max(xol);
                         xnub = xnu==max(xnu);
-                        out = nboxplots( {xn( ~xnub & ~xolb ), xn( ~xnub & xolb ); xn( xnub & ~xolb ), xn( xnub & xolb ) } );
+                        out = nboxplots( {xp( xnub & ~xolb ), xp( ~xnub & ~xolb ); xp( xnub & xolb ), xp( ~xnub & xolb ) } );
                     elseif numel(unique(xol))==2
                     % case2: one bin/one contin
                         xolb = xol==max(xol);
@@ -634,26 +634,7 @@ end
                         out = nregplots( X2(:,i), xp );
                     end
                 else
-                    xol = X2_sub(:,i,1);
-                    xnu = X2_sub(:,i,2);
-                    %
-                    if numel(unique(xol))==2 && numel(unique(xnu))==2
-                    % case1: both binary
-                        xolb = xol==max(xol);
-                        xnub = xnu==max(xnu);
-                        out = nboxplots( {xp( ~xnub & ~xolb ), xp( ~xnub & xolb ); xp( xnub & ~xolb ), xp( xnub & xolb ) } );
-                    elseif numel(unique(xol))==2
-                    % case2: one bin/one contin
-                        xolb = xol==max(xol);
-                        out = nregplots( xnu(~xolb), xp(~xolb),[], xnu(xolb), xp(xolb) );
-                    elseif numel(unique(xnu))==2
-                        error('if interaction is mixed binary continuous, swap the ordering -- binary goes first!')
-                    else
-                    % case3: both contin
-                        xol = X2_sub(:,i,1);
-                        xnu = X2_sub(:,i,2);
-                        out = nregplots( xnu(xol<prctile(xol,40)), xp(xol<prctile(xol,40)),[], xnu(xol>prctile(xol,60)), xp(xol>prctile(xol,60)) );
-                    end
+
                 end
             end
 
