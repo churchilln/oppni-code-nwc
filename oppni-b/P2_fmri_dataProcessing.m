@@ -1294,6 +1294,7 @@ for ns=subj_list_for_proc % step through func-proc (block-2)
         
         % call function
         ParamStruct_aug.TR_MSEC = InputStruct_ssa.TR_MSEC;
+        ParamStruct_aug.mask    = maskSsub;
         %
         if analysis_struct.uses_taskfile>0
             out_analysis = pfun( volcel, InputStruct_ssa.task_info, ParamStruct_aug );  

@@ -63,7 +63,7 @@ end
 
 %--> append empty field in position 2 if undeclared / for general modularity
 for(s=1:length(steplist))
-    if procstyle(s)==1 && numel(ParamStruct.(steplist{s}))==1
+    if procstyle(s)==1 && isfield(ParamStruct,(steplist{s})) && numel(ParamStruct.(steplist{s}))==1
         ParamStruct.(steplist{s}){2} = [];
     end
 end

@@ -242,7 +242,7 @@ fprintf('\n=========================================================\n');
     end
     fprintf('Missing data check, design matrix:\n');
     if isempty(X2)
-        ixdrop_X = false(size(X2,1),1);
+        ixdrop_X = false(size(D2,2),1);
         disp('...no design matrix!\n');
     else
         ixdrop_X = ~isfinite(mean(X2,2));
@@ -359,11 +359,11 @@ fprintf('\n=========================================================\n');
     dif = bsxfun(@minus,D2,mean(D2,2,'omitnan')).^2; % deviation from mean map
     outl = mean(dif,1)';                       % mean deviation (averaging over voxels)
     outl = outl./max(outl);                    % renorming deviation
-    subplot(2,3,2); bar( outl ); ylim( [0 1.01]);
+    subplot(2,3,4); bar( outl ); ylim( [0 1.01]);
     title('rms-deviation (big value=probable outlier)');
     PARMHAT = gamfit(outl(isfinite(outl)));    % gamma distribution fitting 
     Pgam = gamcdf(outl,PARMHAT(1),PARMHAT(2)); % probability on gammas
-    subplot(2,3,4); bar( 1-Pgam(isfinite(outl)) ); ylim( [0 0.05]);
+    subplot(2,3,5); bar( 1-Pgam(isfinite(outl)) ); ylim( [0 0.05]);
     title('rms-dev p-value (small value=probable outlier)');
     [p th]=fdr(1-Pgam,'p',0.05,0);             % signifiant outliers FDR=0.05
     if sum(th)<=0
@@ -376,6 +376,8 @@ fprintf('\n=========================================================\n');
             strtmp = [strtmp ', ', subject_list{fith(i)}];
         end
         fprintf('   %s\n',strtmp(3:end))
+
+        axial_plot( dtmp(:,fith), maskS, 6, 2, 1 ); colormap jet;
     end
 
 fprintf('=========================================================\n\n');
@@ -723,12 +725,20 @@ end
 
 %%          %--- plotting stage: to be augmented later ---%
             figure, 
-            
+
+            % -- resetting model contast vector
+            if isempty(model_contrast)
+                model_contrast = {'one-samp'};
+                is_interact = 0;
+            end            
+
             if ~isempty(xn)
                 subplot(1,2,1); hold on; title(sprintf('predictor #%u=%s, Neg. effects',i,model_contrast{i}));
 
                 if is_interact(i)==0
-                    if numel(unique(X2(:,i)))==2
+                    if isempty(X2)
+                        out = nboxplots( {xn} );
+                    elseif numel(unique(X2(:,i)))==2
                         out = nboxplots( {xn(X2(:,i)==min(X2(:,i))), xn(X2(:,i)==max(X2(:,i)))} );
                     else
                         out = nregplots( X2(:,i), xn );
@@ -760,7 +770,9 @@ end
                 subplot(1,2,2); hold on; title(sprintf('predictor #%u=%s, Pos. effects',i,model_contrast{i}));
 
                 if is_interact(i)==0
-                    if numel(unique(X2(:,i)))==2
+                    if isempty(X2)
+                        out = nboxplots( {xp} );
+                    elseif numel(unique(X2(:,i)))==2
                         out = nboxplots( {xp(X2(:,i)==min(X2(:,i))), xp(X2(:,i)==max(X2(:,i)))} );
                     else
                         out = nregplots( X2(:,i), xp );

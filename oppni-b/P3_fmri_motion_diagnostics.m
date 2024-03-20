@@ -202,7 +202,7 @@ if ~exist(  fullfile(outpath,'_group_level','QC','qc.quant',['QCStruct_quant_pip
             QCStruct_quant(ni).frun(nr).krt_frac = mean(krt>thr_krt);
             % globalness of signale
             vnrm = bsxfun(@minus,volmat, mean(volmat,2));
-            vnrm = bsxfun(@rdivide,volmat,sqrt(sum(volmat.^2,2)));
+            vnrm = bsxfun(@rdivide,volmat,sqrt(sum(volmat.^2,2))+eps);
             [u,~,v] =svd( vnrm,'econ');
             rho = vnrm * (v(:,1) * sign(mean(u(:,1))) );
             QCStruct_quant(ni).frun(nr).corr_gs_rat = mean(rho)/std(rho);

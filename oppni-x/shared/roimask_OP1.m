@@ -6,7 +6,7 @@ function roimask_OP1( pcsf_map, pwm_map, pgm_map, tsd_map, brain_mask, odir, Par
 %
 % --> checks for consistency of roimask!
 
-if nargin<7 || isempty(ParamCell)
+if nargin<7 || isempty(ParamCell) || (numel(ParamCell)==1 && isempty(ParamCell{1}))
     spec_set=struct();
     spec_set.gm_smo      = 0.85;
     spec_set.csf_pthresh = 0.90;
