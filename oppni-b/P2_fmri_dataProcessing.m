@@ -262,7 +262,11 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
     for i=1:3
         if ~exist(sprintf('%s/anat_seg_%s_warped.nii.gz',opath3a,tisslist{i}),'file')
             if contains(PipeStruct_aug.AWARP{1},'AF') %afni-styles warp
-                unix(sprintf('3dNwarpApply -master %s/anat_warped.nii.gz -source %s/anat_seg_%s.nii.gz -nwarp "%s/anatQQ_WARP.nii.gz %s/anatQQ.aff12.1D" -prefix %s/anat_seg_%s_warped.nii.gz',opath2a,opath3a,tisslist{i},opath2a,opath2a,opath3a,tisslist{i}));
+                unix(sprintf('3dNwarpApply -master %s/anat_warped.nii.gz -source %s/anat_seg_%s.nii.gz -nwarp "%s/anatQQ_WARP.nii.gz %s/anatQQ.aff12.1D" -prefix %s/anat_seg_%s_warped.nii.gz',...
+                    opath2a,opath3a,tisslist{i},opath2a,opath2a,opath3a,tisslist{i}));
+            elseif contains(PipeStruct_aug.AWARP{1},'AN') %ants-styles warp
+                unix(sprintf('antsApplyTransforms -d 3 -i %s/anat_seg_%s.nii.gz -r %s/anat_warped.nii.gz -n linear -t %s/anatQQ_WARP.nii.gz -t %s/anatQQ_GenericAffine.mat -o %s/anat_seg_%s_warped.nii.gz',...
+                    opath3a,tisslist{i}, opath2a, opath2a,opath2a, opath3a,tisslist{i}));
             else
                 error('unrecognized warping style!')
             end

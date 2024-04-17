@@ -821,6 +821,9 @@ if strcmpi(ROImode,'avg')
     fprintf(fid,fstr,score_arr);
     fclose(fid);
 
+    if ~isempty(X2)
+
+    end
 else
 
     score_arr = NaN*ones( size(D2,2), 2*size(tmaps,2) );
@@ -960,22 +963,4 @@ else
     fclose(fid);
 end
 
-if ~isempty(model_contrast)
 
-    % populate outfile
-    fhdd=[];
-    for i=1:numel(model_contrast)
-        fhdd=[fhdd,model_contrast{i},'\t'];
-    end
-    fhdd=[fhdd(1:end-2),'\n'];
-    
-    fstr='%.03f\t';
-    fstr = repmat(fstr,1,size(X2,2));
-    fstr = [fstr(1:end-2),'\n'];
-    
-    fid = fopen([out_folder_name,'/score_array_contr.',num2str(numel(model_contrast)),'_design_mat.txt'],'w');
-    fprintf(fid,fhdd);
-    fprintf(fid,fstr,X2);
-    fclose(fid);
-
-end

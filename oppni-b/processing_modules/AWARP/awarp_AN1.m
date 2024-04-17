@@ -7,12 +7,14 @@ function awarp_AN1(Adataset, Maskdset, Basedset, odir, ParamCell)
 
 % based on: https://github.com/ANTsX/ANTs/blob/master/Scripts/newAntsExample.sh
 %
-error('This option currently disabled -- still needs detailed QC!')
+% error('This option currently disabled -- still needs detailed QC!')
 
 
-pref = [odir,'/__opptmp_p2anat_mask'];
+pref = [odir,'/__opptmp_p2anat_warp'];
 
-unix(sprintf('mkdir -p %s',pref));
+if ~exist( sprintf('%s/anat_warped.nii.gz',odir) ,'file')
+    
+    unix(sprintf('mkdir -p %s',pref));
 
     % check for path  to base file, create tpath
     if exist(Basedset,'file')
@@ -88,3 +90,15 @@ unix(sprintf('mkdir -p %s',pref));
     fixd, movn, fixd, movn, fixd, movn, fixd, movn, fixd, movn, fixd, movn, nomen, nomen, nomen ));
     %
     unix(sprintf('antsApplyTransforms -d 3 -i %s -r %s -n linear -t %s1Warp.nii.gz -t %s0GenericAffine.mat -o %s_warped.nii.gz',movn,fixd,nomen,nomen,nomen));
+
+    %--transfer over the relevant files...
+    unix(sprintf('cp %s/anat_N4.nii.gz %s/anat_proc.nii.gz',pref,odir));
+    unix(sprintf('cp %s/anat_N4_masked.nii.gz %s/anat_procss.nii.gz',pref,odir));
+    unix(sprintf('cp %s/aln_warped.nii.gz %s/anat_warped.nii.gz',pref,odir));
+    unix(sprintf('cp %s/aln1Warp.nii.gz %s/anatQQ_WARP.nii.gz',pref,odir));
+    unix(sprintf('cp %s/aln0GenericAffine.mat %s/anatQQ_GenericAffine.mat',pref,odir));
+    
+    unix(sprintf('rm -rf %s',pref));
+else
+    disp('ants-warp already exists!')
+end
