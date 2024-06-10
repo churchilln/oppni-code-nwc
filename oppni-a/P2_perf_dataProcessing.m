@@ -50,6 +50,9 @@ end
 
 % now augmenting outpath... do this after P0!
 outpath = fullfile(outpath,'perf_proc'); % subdir should be fmri_proc
+if ~exist(outpath,'dir') error('perf proc directory does not exist!'); end
+e=dir([outpath,'*']); % dir to get absolute
+outpath = fullfile(e.folder,e.name); % convert to absolute
 % check for missing files from previous step too
 File_Existence_Checker_perf(InputStruct_aug,outpath,1); 
 

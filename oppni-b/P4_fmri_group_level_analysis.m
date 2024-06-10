@@ -114,6 +114,9 @@ end
 
 % now augmenting outpath... do this after P0!
 outpath = fullfile(outpath,'fmri_proc'); % subdir should be fmri_proc
+if ~exist(outpath,'dir') error('fmri proc directory does not exist!'); end
+e=dir([outpath,'*']); % dir to get absolute
+outpath = fullfile(e.folder,e.name); % convert to absolute
 
 %% Loading imaging data
 
@@ -956,7 +959,8 @@ else
     
     fid = fopen([out_folder_name,'/score_array_contr.',num2str(numel(model_contrast)),'_thresh.',THRESH_METHOD{1},'-',num2str(THRESH_METHOD{2}),'.txt'],'w');
     fprintf(fid,fhdd);
-    fprintf(fid,fstr,score_arr);
+    xtmp = score_arr';
+    fprintf(fid,fstr,xtmp(:));
     fclose(fid);
 end
 
@@ -975,7 +979,8 @@ if ~isempty(model_contrast)
     
     fid = fopen([out_folder_name,'/score_array_contr.',num2str(numel(model_contrast)),'_design_mat.txt'],'w');
     fprintf(fid,fhdd);
-    fprintf(fid,fstr,X2);
+    xtmp = X2';
+    fprintf(fid,fstr,xtmp(:));
     fclose(fid);
 
 end

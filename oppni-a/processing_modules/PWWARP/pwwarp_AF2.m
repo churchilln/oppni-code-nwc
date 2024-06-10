@@ -18,6 +18,9 @@ function pwwarp_AF2( Funcfile_set, prefix_set, odir1, odir2, Basefile_masked, An
 % NB: when specifying alignment matrix outputs, make sure suffix is aff12.1D
 %     throughout, otherwise cat_matvec will only do 1 line!
 
+% prefix for temp files
+pref = [odir1,'/__opptmp_p2func_warp'];
+% num func runs
 N_func = numel(Funcfile_set);
 
 if ~exist(sprintf('%s/netaff.aff12.1D',odir1),'file')

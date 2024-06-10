@@ -12,6 +12,9 @@ end
 %% Preliminary check of files
 
 outpath = fullfile(outpath,'perf_proc'); % subdir should be perf_proc
+if ~exist(outpath,'dir') error('perf proc directory does not exist!'); end
+e=dir([outpath,'*']); % dir to get absolute
+outpath = fullfile(e.folder,e.name); % convert to absolute
 
 % basic file checks ... construct input/pipeline/param structure -> should throw error if inputs non-valid
 InputStruct = Read_Input_File_perf(inputfile);

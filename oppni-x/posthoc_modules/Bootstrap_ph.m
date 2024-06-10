@@ -17,7 +17,7 @@ if    ( isempty(design) || numel(unique(design))==1 )
     bsrmat = zeros( size(datamat,1), NBOOT );
     for(bsr=1:NBOOT)
         
-        [bsr NBOOT],
+        %[bsr NBOOT],
         
         list = ceil(n*rand(n,1));
         
@@ -57,7 +57,7 @@ elseif( numel(unique(design))>1 && size(design,1)>1 && size(design,2)==1 )
     bsrmat = zeros( size(datamat1,1), NBOOT );
     for(bsr=1:NBOOT)
         
-        [bsr NBOOT],
+        %[bsr NBOOT],
         list1 = ceil(n1*rand(n1,1));
         list2 = ceil(n2*rand(n2,1));  
         
@@ -114,7 +114,7 @@ elseif( numel(unique(design))>1 && size(design,1)>1 && size(design,2)==2 )
     bsrmat = zeros( size(datamat1,1), NBOOT );
     for(bsr=1:NBOOT)
         
-        [bsr NBOOT],
+        %[bsr NBOOT],
         list = ceil(n*rand(n,1));
         
         switch estim % select bootstrapping statistic

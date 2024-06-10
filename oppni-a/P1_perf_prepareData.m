@@ -30,6 +30,9 @@ end
 [subject_list, InputStruct_aug, ~, ~] = P0_perf_populateDirectories( inputfile, pipelinefile, paramlist, outpath );
 % now augmenting outpath... do this after P0!
 outpath = fullfile(outpath,'perf_proc'); % subdir should be fmri_proc
+if ~exist(outpath,'dir') error('perf proc directory does not exist!'); end
+e=dir([outpath,'*']); % dir to get absolute
+outpath = fullfile(e.folder,e.name); % convert to absolute
 % now check for expected raw data files
 File_Existence_Checker_perf(InputStruct_aug,outpath,0); clear InputStruct_aug;
 
@@ -61,6 +64,7 @@ for ns=1:numel(subject_list)
                 unix(sprintf('cp %s %s/anat%u.nii.gz',InputStruct_ssa.arun(nr).ANAT_filename,opath0,nr))
                 unix(sprintf('gunzip %s/anat%u.nii.gz',opath0,nr)); % unzipt
             elseif contains(InputStruct_ssa.arun(nr).ANAT_filename,'.nii')
+                unix(sprintf('rm %s/anat%u.nii.gz',opath0,nr));
                 unix(sprintf('cp %s %s/anat%u.nii',InputStruct_ssa.arun(nr).ANAT_filename,opath0,nr))
             else
                 error('unrecognized input file type for:\n\t%s\n',InputStruct_ssa.arun(nr).ANAT_filename)
@@ -112,6 +116,7 @@ for ns=1:numel(subject_list)
                 end
                 unix(sprintf('gunzip %s/perf%u.nii.gz',opath0,nr)); % unzipt
             elseif contains(InputStruct_ssa.prun(nr).PERF_filename,'.nii')
+                unix(sprintf('rm %s/perf%u.nii.gz',opath0,nr));
                 if strcmpi(InputStruct_ssa.m0loc,'separate')
                     unix(sprintf('cp %s %s/perf%u.nii',InputStruct_ssa.prun(nr).PERF_filename,opath0,nr))
                 elseif strcmpi(InputStruct_ssa.m0loc,'infile')

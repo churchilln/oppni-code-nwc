@@ -51,6 +51,10 @@ for nr=1:N_func
     
         %-- b. rigid alignment of run-1 func refbrick to run-1 t1 anat (stripped) --> ONLY FOR BASEBRICK OF FIRST RUN 
         if nr==1
+
+            currPath=pwd;   % get current path
+            cd(pref);       % jump to temp directory --> because this script creates lots of local derivatives 
+
             if     strcmpi(anatType,'T1')
                 unix(sprintf('align_epi_anat.py -anat2epi -anat %s/anat_procss.nii.gz -suffix _alj -epi %s_masked.nii.gz -epi_base 0  -epi_strip None  -anat_has_skull no  -ginormous_move -deoblique off -cost lpc+ZZ -volreg off -tshift off',...
                     Anatloc,Basefile_pref));
@@ -60,11 +64,14 @@ for nr=1:N_func
             else
                 error('unrecognized anat-type');
             end
+            
             % convert output to .nii format, push to correct directory
             %unix(sprintf('3dAFNItoNIFTI anat_procss_alj+orig -prefix anat_procss_alj.nii.gz')); 
             % % --> just delete alinged without making copy for now, also delete the e2a_only file (unused!) 
             unix(sprintf('rm anat_procss_alj+orig.BRIK anat_procss_alj+orig.BRIK.gz anat_procss_alj+orig.HEAD anat_procss_alj_e2a_only_mat.aff12.1D'));
             unix(sprintf('mv anat_procss_alj_mat.aff12.1D %s',odir1));
+
+            cd(currPath);  % jump back to current path
         end
     
         %-- c. concatenate volreg/epi2anat/tlrc xforms

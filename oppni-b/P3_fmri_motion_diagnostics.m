@@ -15,6 +15,9 @@ end
 [subject_list, InputStruct_aug, PipeStruct_aug, ParamStruct_aug] = P0_fmri_populateDirectories( inputfile, pipelinefile, paramlist, outpath );
 % now augmenting outpath... do this after P0!
 outpath = fullfile(outpath,'fmri_proc'); % subdir should be fmri_proc
+if ~exist(outpath,'dir') error('fmri proc directory does not exist!'); end
+e=dir([outpath,'*']); % dir to get absolute
+outpath = fullfile(e.folder,e.name); % convert to absolute
 % check for missing files from previous step too
 File_Existence_Checker_fmri(InputStruct_aug,outpath,1); 
 

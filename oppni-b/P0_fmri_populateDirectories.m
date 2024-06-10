@@ -34,6 +34,9 @@ end
 %% Preliminary check of files
 
 outpath = fullfile(outpath,'fmri_proc'); % subdir should be fmri_proc
+mkdir_r(outpath); % construct path
+e=dir([outpath,'*']); % dir to get absolute
+outpath = fullfile(e.folder,e.name); % convert to absolute
 
 % basic file checks ... construct input/pipeline/param structure -> should throw error if inputs non-valid
 InputStruct = Read_Input_File_fmri(inputfile);

@@ -30,6 +30,9 @@ end
 [subject_list, InputStruct_aug, ~, ~] = P0_fmri_populateDirectories( inputfile, pipelinefile, paramlist, outpath );
 % now augmenting outpath... do this after P0!
 outpath = fullfile(outpath,'fmri_proc'); % subdir should be fmri_proc
+if ~exist(outpath,'dir') error('fmri proc directory does not exist!'); end
+e=dir([outpath,'*']); % dir to get absolute
+outpath = fullfile(e.folder,e.name); % convert to absolute
 % now check for expected raw data files
 File_Existence_Checker_fmri(InputStruct_aug,outpath,0); clear InputStruct_aug;
 
@@ -60,6 +63,7 @@ for ns=1:numel(subject_list)
                 unix(sprintf('cp %s %s/anat%u.nii.gz',InputStruct_ssa.arun(nr).ANAT_filename,opath0,nr));
                 unix(sprintf('gunzip %s/anat%u.nii.gz',opath0,nr)); % unzipt
             elseif contains(InputStruct_ssa.arun(nr).ANAT_filename,'.nii')
+                unix(sprintf('rm %s/anat%u.nii.gz',opath0,nr));
                 unix(sprintf('cp %s %s/anat%u.nii',InputStruct_ssa.arun(nr).ANAT_filename,opath0,nr));
             else
                 error('unrecognized input file type for:\n\t%s\n',InputStruct_ssa.arun(nr).ANAT_filename);
@@ -106,6 +110,7 @@ for ns=1:numel(subject_list)
                 unix(sprintf('cp %s %s/func%u.nii.gz',InputStruct_ssa.frun(nr).FUNC_filename,opath0,nr));
                 unix(sprintf('gunzip %s/func%u.nii.gz',opath0,nr)); % unzipt
             elseif contains(InputStruct_ssa.frun(nr).FUNC_filename,'.nii')
+                unix(sprintf('rm %s/func%u.nii.gz',opath0,nr));
                 unix(sprintf('cp %s %s/func%u.nii',InputStruct_ssa.frun(nr).FUNC_filename,opath0,nr));
             else
                 error('unrecognized input file type for:\n\t%s\n',InputStruct_ssa.frun(nr).FUNC_filename);
