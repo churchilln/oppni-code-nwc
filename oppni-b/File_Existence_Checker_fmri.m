@@ -11,7 +11,11 @@ if stage==0
         lstr = sprintf('Missing File (line %u/%u)! ', ns,numel(InputStruct));
         if ~isempty(InputStruct(ns).SEED_filename) && ~exist( InputStruct(ns).SEED_filename ,'file')
             error('%sExpected to find SEED file but did not:\n\t%s\n', lstr, InputStruct(ns).SEED_filename );
-        end       
+        end
+        spec_case = {'alt+z','alt+z2','alt-z','alt-z2','seq+z','seq-z'};
+        if sum(strcmpi(InputStruct(ns).TPATTERN,spec_case))==0 && ~exist(InputStruct(ns).TPATTERN,'file')
+            error('%sExpected to find TPATTERN file but did not:\n\t%s\n',lstr,InputStruct(ns).TPATTERN)
+        end
 
         % func n physio n task
         for nr=1:InputStruct(ns).N_func
@@ -59,7 +63,7 @@ elseif stage==1
             if ~exist( sprintf('%s/func%u.nii',opath0,nr), 'file') && ~exist( sprintf('%s/func%u.nii.gz',opath0,nr), 'file')
                 error('%sExpected to find raw data func file but did not:\n\t%s\n', lstr, sprintf('%s/func%u.nii(.gz)',opath0,nr) );
             end
-            if (InputStruct(ns).frun(nr).DROP_first>0 || InputStruct.run(nr).DROP_last>0) && ~exist( sprintf('%s/func%u_drop.nii',opath0,nr), 'file') && ~exist( sprintf('%s/func%u_drop.nii.gz',opath0,nr), 'file')
+            if (InputStruct(ns).frun(nr).DROP_first>0 || InputStruct(ns).frun(nr).DROP_last>0) && ~exist( sprintf('%s/func%u_drop.nii',opath0,nr), 'file') && ~exist( sprintf('%s/func%u_drop.nii.gz',opath0,nr), 'file')
                 error('%sExpected to find raw data func file but did not:\n\t%s\n', lstr, sprintf('%s/func%u_drop.nii(.gz)',opath0,nr) );
             end
             if ~isempty(InputStruct(ns).frun(nr).PHYSIO_filename) && ~exist(sprintf('%s/physio%u.resp.1D',opath0,nr),'file')

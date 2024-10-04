@@ -1,3 +1,21 @@
+'
+
+-some reflections on masking
+    >initial version of the revamped dti protocol (oppni-d) uses a "loose" mask for eddy correction and dtifitting
+     to ensure all brain is included in the model ... but allows for a bit of meninges & CSF around edges
+    >dti-tk warping protocol was done directly on the loose masked data, leaving an apparent "rim" in diffusivity/fa maps
+    >careful check of protocol with more aggressive masking shows that original approach does not bias white matter
+     estimates appreciably, and has the advantage that you don't risk accidentally clipping out tissues relevant
+     to alignment
+    >need to do some mask-based cleanup after though! Otherwise images look not-so-pretty
+
+
+
+
+
+
+====================
+
 
 To integrate:
 

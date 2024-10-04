@@ -126,6 +126,16 @@ while ischar(tline)
         end
     end
 
+    fieldname = 'PHYSAMP_MSEC';
+    if contains( upper(tline), strcat(fieldname,'=') )
+        isrt = strfind( upper(tline),[fieldname,'='] ) + (numel(fieldname)+1);
+        iend = ispaces(ispaces>=isrt);
+        InputStruct(ns).PHYSAMP_PR_MSEC = str2num(tline(isrt:iend(1))); % take first ending
+    else
+        warning('input file line does not contain optional %s field - some physio correction may not work\n\t%s\n',fieldname,tline);
+        InputStruct(ns).PHYSAMP_PR_MSEC = [];
+    end
+
     fieldname = 'DROP';
     if contains( upper(tline), strcat(fieldname,'=') )
         isrt = strfind( upper(tline),[fieldname,'='] ) + (numel(fieldname)+1);

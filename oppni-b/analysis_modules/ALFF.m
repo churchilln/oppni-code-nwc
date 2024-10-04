@@ -47,7 +47,7 @@ for ir=1:Nr
     
     % frequency maps
     output.image.ALFF(:,ir)   = mean(ampSum(:,f>=0.01 & f<=0.08),2);
-    output.image.fALFF(:,ir)  =  sum(ampSum(:,f>=0.01 & f<=0.08),2) ./ (sum(ampSum(:,f>0),2)+eps);
+    output.image.fALFF(:,ir)  =  sum(ampSum(:,f>=0.01 & f<=0.08),2) ./ (sum(ampSum(:,f>=0.01),2)+eps);
     output.image.zALFF(:,ir)  = zscore( output.image.ALFF(:,ir)  );
     output.image.zfALFF(:,ir) = zscore( output.image.fALFF(:,ir) );
 end

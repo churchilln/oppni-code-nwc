@@ -30,6 +30,9 @@ N_func = numel(Funcfile_set);
 
 if ~exist(sprintf('%s/netaff.aff12.1D',odir1),'file')
 
+    % build directory struct recursively
+    unix(sprintf('mkdir -p %s',pref));
+
     currPath=pwd;   % get current path
     cd(pref);       % jump to temp directory --> because this script creates lots of local derivatives 
 

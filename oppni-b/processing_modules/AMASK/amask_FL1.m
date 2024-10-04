@@ -1,5 +1,19 @@
 function amask_FL1(Adataset, Basedset, odir, ParamCell)
+%
+% .FSL-based anatomical brain masking
 
+if isempty(ParamCell) || isempty(ParamCell{1})
+    doTouchup = False;
+else
+    doTouchup = ParamCell{1};
+    if strcmpi(doTouchup,'True')
+        doTouchup=True;
+    elseif strcmpi(doTouchup,'False')
+        doTouchup=False;
+    else
+        error('doTouchup option must be True or False!')
+    end
+end
 
 % prefix for temp files
 pref = [odir,'/__opptmp_p2anat_mask'];
@@ -90,7 +104,16 @@ if ~exist( sprintf('%s/anatBrainMask.nii.gz',odir) ,'file')
     unix(sprintf('fslmaths %s/T1_biascorr_brain_mask -fillh %s/T1_biascorr_brain_mask',pref,pref))
     unix(sprintf('fslmaths %s/T1_biascorr -mas %s/T1_biascorr_brain_mask %s/T1_biascorr_brain',pref,pref,pref))
 
-    unix(sprintf('flirt -interp nearestneighbour -in %s/T1_biascorr_brain_mask -ref %s/anat.nii.gz -applyxfm -init %s/T1_roi2orig.mat -out %s/anatBrainMask',pref,pref,pref,odir))
+    unix(sprintf('flirt -interp nearestneighbour -in %s/T1_biascorr_brain_mask -ref %s/anat.nii.gz -applyxfm -init %s/T1_roi2orig.mat -out %s/anatBrainMask_unt',pref,pref,pref,pref))
+
+    %--> --> --> Extra "Touchup" step if requested
+    if doTouchup
+        unix(sprintf('fslmaths %s -mul %s/anatBrainMask_unt %s/anat_midmsk.nii.gz',Adataset,pref,pref))
+        unix(sprintf('bet %s/anat_midmsk.nii.gz %s/remsk_bet -f 0.3 -m',pref,pref));
+        unix(sprintf('cp %s/remsk_bet_mask.nii.gz %s/anatBrainMask.nii.gz',pref,odir))
+    else
+        unix(sprintf('cp %s/anatBrainMask_unt.nii.gz %s/anatBrainMask.nii.gz',pref,odir))
+    end
 
     if exist(sprintf('%s/anatBrainMask.nii.gz',odir),'file') 
         if doclean>0

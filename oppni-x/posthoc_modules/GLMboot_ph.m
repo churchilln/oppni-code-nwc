@@ -1,7 +1,7 @@
 function out = GLMboot_ph( datamat, design )
 
 econd = eps;
-NBOOT = 2000;
+NBOOT = 1000;
 
     disp('GLM, bootstrapped...');
  

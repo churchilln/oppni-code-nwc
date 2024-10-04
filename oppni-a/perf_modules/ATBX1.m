@@ -83,28 +83,35 @@ else
 end
 
 % currently only admits 2D PASL option
-if contains(lab_method,'PASL')
+if contains(lab_method,'PASL') || contains(lab_method,'PCASL') || contains(lab_method,'CASL')
     fprintf('method %s identified ... carry on!\n',lab_method);
 else
-    error('sorry! method %s not currently recognized for this package ... check back later!\n',lab_method);
+    error('sorry! method %s not currently recognized for this package!\n',lab_method);
 end
 
 % Now pre-initializing parameter values for perfusion estimation (all in msec)
 %
 % mandatory fields -- users must specify, depends on acquisition
-par.TR_MSEC       = NaN;% 2500;  % - repetition time. This is default...may need to adjust
-par.TE_MSEC       = NaN;%   12;  % - echo time. This is default...may need to adjust
-par.TI1_MSEC      = NaN;%  700;  % - Tagging bolus duration in ms, for the QUIPSS II. This is the default value...may need to adjust
-par.TI2_MSEC      = NaN;% 1800;  % - second inversion time; delay time for labeled spin to enter the imaging slice. This is the default value...may need to adjust
-par.TSL_MSEC      = NaN; % slice spacing
+par.TR_MSEC     = NaN;  % 2500;  % - repetition time.
+par.TE_MSEC     = NaN;  %   12;  % - echo time.
+par.LT_MSEC     = NaN;  %  700;  % - PASL tagging bolus duration (TI1) / PCASL label duration (/tau) -- in msec
+par.DT_MSEC     = NaN;  % 1800;  % - PASL second inversion time (TI or TI2) / PCASL post-label delay (PLD or /omega) -- in msec
+par.ST_MSEC     = NaN;  %   50;  % - slice spacing
 %
 % optional fields -- these go into kinetic modelling equations
-par.KM_BLOODT1    = 1600;  % - T1 for blood (msec); ref Lu 04 and Cavusoglu 09 MRI. This is B0 dependent! (BloodT1=1200 at 1.5T...originally BloodT1=1490 at 3.0T / Wang 03)
-par.KM_BLOODT2S   =   34;  % - T2s for capillary arterial blood
-par.KM_KM_PARCOEF = 0.98;  % - blood/tissue water partition coefficient %*100*60;   %0.9 mL/g
-par.KM_PDRAT      = 0.98;  % - proton density ratio blood/gm
-par.KM_LABEFF     = 0.90;  % - labeling efficiency, 0.9 for PASL
-par.KM_QTI        = 0.85;  % - close to unit, and is set to 0.85 in Warmuth 05
+par.KM_BLOODT1  = 1600;  % - T1 for blood (msec); ref Lu 04 and Cavusoglu 09 MRI. This is B0 dependent! (BloodT1=1200 at 1.5T...originally BloodT1=1490 at 3.0T / Wang 03)
+par.KM_BLOODT2S =   34;  % - T2s for capillary arterial blood
+par.KM_PARCOEF  = 0.98;  % - blood/tissue water partition coefficient %*100*60;   %0.9 mL/g also acceptable
+par.KM_PDRAT    = 0.98;  % - proton density ratio blood/gm
+par.KM_QTI      = 0.85;  % - close to unit, and is set to 0.85 in Warmuth 05
+% labeling efficiency, varies by label method. Rough estimates based on lit.
+if     contains(lab_method,'PASL')
+    par.KM_LABEFF     = 0.90; 
+elseif contains(lab_method,'PCASL')
+    par.KM_LABEFF     = 0.85; 
+elseif contains(lab_method,'CASL')
+    par.KM_LABEFF     = 0.70; 
+end
 %
 par_list = fields(par);
 
@@ -123,22 +130,23 @@ if( (nargin >= 5) && ~isempty(dataInfo) )
         end
    end
 end
+% some sanity checks
+if par.ST_MSEC<10 && par.ST_MSEC~=0
+    error('slice timing %.02f msec seems unreasonably small. Are you sure this is right?',par.ST_MSEC)
+end
 
 % Slice timing array
 if  contains(lab_method,'2D')
-    if par.TSL_MSEC ==0
+    if par.ST_MSEC ==0
         error('2D ASL requires slice times');
-    elseif par.TSL_MSEC ==-1 % auto-esitmation
-        % offset in acq. per slice (min-TR - labeltime - delaytime)/#slices
-        Slicetime   = (par.TR_MSEC - par.TI2_MSEC)/voldims(3);
     else % input value estimation
-        Slicetime   = par.TSL_MSEC;
+        Slicetime   = par.ST_MSEC;
     end
     % get per-slice adjustments
-    tmp         = bsxfun(@times, mask, permute(1:voldims(3),[3 1 2]) ); %% scale voxel values by slice order (start at zero)
+    tmp         = bsxfun(@times, mask, permute( (1:voldims(3))-1,[3 1 2]) ); %% index slices ascending (starting at zero)
     slc_timevct = tmp(mask>0) .* Slicetime; %% vectorized, scaled by slice timing
 elseif contains(lab_method,'3D')
-    if par.TSL_MSEC <=0 % no relative delays
+    if par.ST_MSEC <=0 % no relative delays
         slc_timevct = 0;        
     else
         error('3D ASL doesnt have slice offsets');
@@ -195,14 +203,34 @@ clear delM_init; %% clear initialized
 
 %% NOW QUANTIFICATION OF CBF
 
-% adjusted TI2, based on TI2 (delay time) & slice-specific delay
-TI_adj= (par.TI2_MSEC) + slc_timevct;
-% equilibrium magnetization of arterial blood
-M0a   = (par.KM_PDRAT * exp(-par.TE_MSEC/par.KM_BLOODT2S)) .* m0vct;
-% absolute CBF, using the ASLtbx formulation of TCBF (ml/100g/ms) --> (ml/100g/min):
-aCBF = 6000*1000 * bsxfun(@rdivide, par.KM_KM_PARCOEF.*PERF , (2*par.KM_LABEFF*par.TI1_MSEC*par.KM_QTI).*M0a.*exp(-TI_adj./par.KM_BLOODT1) );
-% uncalibrated CBF --> if 2D, does a single adjustment for slice-dependent transit times
-uCBF = bsxfun(@rdivide, PERF, exp(-TI_adj./par.KM_BLOODT1) );
+if contains(lab_method,'PASL')
+
+    % adjusted TI2, based on TI2 (delay time) & slice-specific delay
+    TI_adj= (par.DT_MSEC) + slc_timevct;
+    % equilibrium magnetization of arterial blood
+    M0a   = (par.KM_PDRAT * exp(-par.TE_MSEC/par.KM_BLOODT2S)) .* m0vct;
+    % absolute CBF, using the ASLtbx formulation of TCBF (ml/100g/ms) --> (ml/100g/min):
+    aCBF = 6000*1000 * bsxfun(@rdivide, par.KM_PARCOEF.*PERF , (2*par.KM_LABEFF*par.LT_MSEC*par.KM_QTI).*M0a.*exp(-TI_adj./par.KM_BLOODT1) );
+    % uncalibrated CBF -->does a single adjustment for slice-dependent transit times (ie for 2D acquisition)
+    uCBF = bsxfun(@rdivide, PERF, exp(-TI_adj./par.KM_BLOODT1) );
+
+elseif contains(lab_method,'PCASL') || contains(lab_method,'CASL')
+    
+    % adjusted delaytime
+    Omega = par.DT_MSEC + slc_timevct;
+    % equilibrium magnetization of arterial blood
+    M0a   = m0vct;% --per white-paper model
+    %% absolute CBF, using the ASLtbx formulation of TCBF (ml/100g/ms) --> (ml/100g/min):
+    %r1a=1/par.KM_BLOODT1; %etc
+    %aCBF=6000*1000*par.KM_PARCOEF*(PERF./M0a)*r1a./(2*par.KM_LABEFF* (exp(-Omega*r1a)-exp( -1*(par.LT_MSEC+Omega)*r1a) ) );  % this model is based on Wang et al Riology 2005
+    % rearr...alt
+    aCBF = 6000*1000 * bsxfun(@rdivide, par.KM_PARCOEF.*PERF , (2*par.KM_LABEFF*par.KM_BLOODT1*(1-exp(-par.LT_MSEC/par.KM_BLOODT1))).*M0a.*exp(-Omega./par.KM_BLOODT1) );
+    % uncalibrated CBF -->does a single adjustment for slice-dependent transit times (ie for 2D acquisition)
+    uCBF = bsxfun(@rdivide, PERF, exp(-Omega./par.KM_BLOODT1) );
+
+end
+
+
 
 % Storing outputs
 output.aCBF = aCBF;

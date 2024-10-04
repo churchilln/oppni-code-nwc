@@ -423,9 +423,9 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
             % assign values to fields
             dataInfo.TR_MSEC  = InputStruct_ssa.TR_MSEC; % repetition time
             dataInfo.TE_MSEC  = InputStruct_ssa.TE_MSEC; % echo time
-            dataInfo.TI1_MSEC = InputStruct_ssa.LDS_MSEC(1); % label time 
-            dataInfo.TI2_MSEC = InputStruct_ssa.LDS_MSEC(2); % delay --> full inversion (label+postlabel) 
-            dataInfo.TSL_MSEC = InputStruct_ssa.LDS_MSEC(3); % slice time (=0 if no-delay / -1 if auto-estim) 
+            dataInfo.LT_MSEC  = InputStruct_ssa.LDS_MSEC(1); % label time 
+            dataInfo.DT_MSEC  = InputStruct_ssa.LDS_MSEC(2); % delay --> full inversion (label+postlabel) 
+            dataInfo.ST_MSEC = InputStruct_ssa.LDS_MSEC(3); % slice time (=0 if no-delay / -1 if auto-estim) 
             % plug in any prespec'd kinetic modelling values...
             par_list = fields(ParamStruct_aug);
             kmix = find( contains(par_list,'KM_'));

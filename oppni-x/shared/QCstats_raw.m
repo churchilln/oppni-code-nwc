@@ -11,12 +11,15 @@ if isempty(prefixes)
         prefixes{ns,1} = sprintf('subj_%u',ns);
     end
 end
+%- imaging datatype
 if nargin<4 || (~strcmpi(type,'anat') && ~strcmpi(type,'func') && ~strcmpi(type,'perf') && ~strcmpi(type,'diff'))
     error('need to specify proper datatype - anat, func, perf or diff!')
 end
+%- "lean" output : deletes processing derivatives
 if nargin<5
     lean=1;
 end
+%- "minqc" : only generates header info etc.
 if nargin<6
     minqc=0;
 end
@@ -30,12 +33,12 @@ QCtable_quant  = table();
 end
 
 kq=0;
-for ns=1:NSmax
+for ns=1:NSmax % step thru subjects
     
     opath0 = sprintf('%s/%s',outpath,prefixes{ns}); % construct subject directory
     unix(sprintf('mkdir %s',opath0));
 
-    for nr=1:NRmax
+    for nr=1:NRmax % step thru runs
     
         if ~isempty(filepaths{ns,nr})
 
@@ -49,13 +52,13 @@ for ns=1:NSmax
         
             % port over, minimally proc and check the anatomical scan
             if ~exist(sprintf('%s/img%u.nii',opath0,nr),'file')
-                if contains(filepaths{ns},'.nii.gz')
-                    unix(sprintf('cp %s %s/img%u.nii.gz',filepaths{ns},opath0,nr))
+                if contains(filepaths{ns,nr},'.nii.gz')
+                    unix(sprintf('cp %s %s/img%u.nii.gz',filepaths{ns,nr},opath0,nr))
                     unix(sprintf('gunzip %s/img%u.nii.gz',opath0,nr)); % unzipt
-                elseif contains(filepaths{ns},'.nii')
-                    unix(sprintf('cp %s %s/img%u.nii',filepaths{ns},opath0,nr))
+                elseif contains(filepaths{ns,nr},'.nii')
+                    unix(sprintf('cp %s %s/img%u.nii',filepaths{ns,nr},opath0,nr))
                 else
-                    error('unrecognized input file type for:\n\t%s\n',filepaths{ns})
+                    error('unrecognized input file type for:\n\t%s\n',filepaths{ns,nr})
                 end
             end
 
@@ -108,9 +111,9 @@ for ns=1:NSmax
                         unix(sprintf('rm %s/deriv/img%u_brmask.nii.gz',opath0,nr));
 
                     elseif strcmpi(type,'func')
-                        unix(sprintf('3dAutomask -prefix %s/deriv/func%u_brmask_bin.nii.gz %s/deriv/func%u_deob.nii.gz',opath0,nr,opath0,nr));
+                        unix(sprintf('3dAutomask -prefix %s/deriv/img%u_brmask_bin.nii.gz %s/deriv/img%u_deob.nii.gz',opath0,nr,opath0,nr));
                         % convert mask to binary, 
-                        M0=load_untouch_niiz(sprintf('%s/deriv/func%u_brmask_bin.nii.gz',opath0,nr));
+                        M0=load_untouch_niiz(sprintf('%s/deriv/img%u_brmask_bin.nii.gz',opath0,nr));
                     end
                 else
                     M0=load_untouch_niiz(sprintf('%s/deriv/img%u_brmask_bin.nii.gz',opath0,nr));
@@ -146,6 +149,7 @@ for ns=1:NSmax
                 end
             
                 if ~exist(sprintf('%s/deriv/img%u_MASKIN.nii.gz',opath0,nr),'file') || ~exist(sprintf('%s/deriv/img%u_MASKOUT.nii.gz',opath0,nr),'file')
+                    cseca = zeros(size(M0.img,3),1);
                     % take z-axis cut for signal estimation
                     for z=1:size(M0.img,3) cseca(z,1) = sum(sum( M0.img(:,:,z) )); end
                     [~,izm]=max(cseca);
@@ -169,10 +173,10 @@ for ns=1:NSmax
                 end
                 V0 = load_untouch_niiz(sprintf('%s/deriv/img%u_deob.nii.gz',opath0,nr));
                 %
-                qun_vol = V0.img;
-                qun_msk = M0.img;
-                qun_mski= Mi.img;
-                qun_msko= Mo.img;
+                qun_vol = double(V0.img); % 3d or 4d
+                qun_msk = double(M0.img);
+                qun_mski= double(Mi.img);
+                qun_msko= double(Mo.img);
                 qun_vdim= V0.hdr.dime.pixdim(2:4);
                 if strcmpi(type,'anat')
                     qun_pgm = VG.img;
@@ -180,7 +184,8 @@ for ns=1:NSmax
                     qun_pcf = VC.img;
                     save(sprintf('%s/%s%u_qun.mat',opath0,type,nr),'qun_vol','qun_msk','qun_mski','qun_msko','qun_pgm','qun_pwm','qun_pcf','qun_vdim');
                 else
-                    save(sprintf('%s/%s%u_qun.mat',opath0,type,nr),'qun_vol','qun_msk','qun_mski','qun_msko','qun_vdim');
+                    disp('skip saving....');
+%                     save(sprintf('%s/%s%u_qun.mat',opath0,type,nr),'qun_vol','qun_msk','qun_mski','qun_msko','qun_vdim');
                 end
             else
                 load(sprintf('%s/%s%u_qun.mat',opath0,type,nr));
@@ -189,20 +194,19 @@ for ns=1:NSmax
                 unix(sprintf('rm -r %s/deriv',opath0));
             end
 
-
             % max-likelihood tissue mask
             if strcmpi(type,'anat')
             [~,tiss_ix] = max( cat(4,qun_pcf,qun_pgm,qun_pwm),[],4);
             end
 
-            % general measures
-            for t=1:size(qun_vol,4)
-            [QCtable_quant.SNRa(kq)] = mean( double(qun_vol( qun_mski>0 )) ) ./ std( double(qun_vol( qun_msko>0 )) ); % SNR > all-brain mean vs. noise SD
-            [QCtable_quant.CoVa(kq)] =  std( double(qun_vol( qun_mski>0 )) ) ./ mean( double(qun_vol( qun_mski>0 )) ); % spatial signal homogeneity
-            [QCtable_quant.sACav(kq), QCtable_quant.sACd1(kq), QCtable_quant.sACd2(kq)] = estim_acd_spat( qun_vol, qun_mski ); % signal smoothness
-            [QCtable_quant.nACav(kq), QCtable_quant.nACd1(kq), QCtable_quant.nACd2(kq)] = estim_acd_spat( qun_vol, qun_msko ); % noise smoothness
-            [QCtable_quant.mvol(kq)] = sum(qun_msk(:)) .* prod(qun_vdim);
-            end
+%             % general measures --deprec
+%             for t=1:size(qun_vol,4)
+%             [QCtable_quant.SNRa(kq)] = mean( double(qun_vol( qun_mski>0 )) ) ./ std( double(qun_vol( qun_msko>0 )) ); % SNR > all-brain mean vs. noise SD
+%             [QCtable_quant.CoVa(kq)] =  std( double(qun_vol( qun_mski>0 )) ) ./ mean( double(qun_vol( qun_mski>0 )) ); % spatial signal homogeneity
+%             [QCtable_quant.sACav(kq), QCtable_quant.sACd1(kq), QCtable_quant.sACd2(kq)] = estim_acd_spat( qun_vol, qun_mski ); % signal smoothness
+%             [QCtable_quant.nACav(kq), QCtable_quant.nACd1(kq), QCtable_quant.nACd2(kq)] = estim_acd_spat( qun_vol, qun_msko ); % noise smoothness
+%             [QCtable_quant.mvol(kq)] = sum(qun_msk(:)) .* prod(qun_vdim);
+%             end
            
             if strcmpi(type,'anat')
                 % general spatial measures
@@ -255,7 +259,14 @@ for ns=1:NSmax
                 QCtable_quant.SNRt_sav(kq) = mean( qun_vol_tmp(qun_mski>0) );
                 QCtable_quant.SNRt_ssd(kq) =  std( qun_vol_tmp(qun_mski>0) );
                 %
-                [QCtable_quant.tACav(kq), QCtable_quant.tACd1(kq), QCtable_quant.tACd2(kq)] = estim_acd_temp( double(qun_vol_set), double(qun_mski) );
+                if ns==500
+                    disp('la pause');
+                else
+                    disp('bause');
+                    size(qun_vol),
+                    size(qun_mski),
+                end
+                [QCtable_quant.tACav(kq), QCtable_quant.tACd1(kq), QCtable_quant.tACd2(kq)] = estim_acd_temp( double(qun_vol), double(qun_mski) );
             end
             %-
             clear qun_vol qun_msk qun_mski qun_msko qun_pgm qun_pwm qun_pcf qun_vdim qun_vol_tmp;

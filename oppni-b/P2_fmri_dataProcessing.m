@@ -285,7 +285,7 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
 
     fprintf('\n===> phys-proc. now on subj %u/%u: %s...\n',ns,numel(subject_list),subject_list{ns}),
     
-    disp('nothin for physio-proc so far. put in soon!')
+    disp('nothing for physio-proc so far. put in soon!')
 
     fprintf('\n===> subj %s (%u/%u), func. processing (part-1)...\n',subject_list{ns},ns,numel(subject_list)),
     %% =======================================================================
@@ -344,29 +344,22 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
         end
 
         % >> Pipeline Step #5: "RICOR"
-        if strcmpi(PipeStruct_aug.RICOR{1},'AF1')
-                    %-- c. slice-based physio correction
-                    %
-                    % get the stripped-down physio data matrix
-                    fid = fopen( sprintf('%s.slibase.1D',ostr4) );
-                    tline = fgetl(fid);
-                    kq=0; ise=0;
-                    while ischar(tline) 
-                        if    ( contains(tline,'# >') ) ise=1;
-                        elseif( contains(tline,'# <') ) ise=2;
-                        elseif( ise==1 ) % only if currently flagged on
-                            kq=kq+1;
-                            ricormat(kq,:) = str2num( tline );
-                        end
-                        tline = fgetl(fid);
-                    end
-                    fclose(fid);
-                    % take the matrix of slicewise physio covariates and regress slice-by-slice from the despiked data
-                    ricor_regress( sprintf('%s/prewarp/func%u_despike.nii.gz',opath2f,nr), ricormat, sprintf('%s/prewarp/func%u_ricor.nii.gz',opath2f,nr) );
-        elseif strcmpi(PipeStruct_aug.RICOR{1},'OFF')
+        Step = 'RICOR';
+        if strcmpi(PipeStruct_aug.(Step){1},'OFF')
             unix(sprintf('cp %s/prewarp/func%u_despike.nii.gz %s/prewarp/func%u_ricor.nii.gz',opath2f,nr, opath2f,nr));
         else
-            error('unrecognized ricorring?!')
+            % get function handle for analysis model of interest
+            currPath=pwd;                               % get current path
+            cd(pipeline_struct.(Step).filepath);               % jump to module directory
+            pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+            cd(currPath);                               % jump back to current path
+            % execute step:
+            clear acqpar;
+            acqpar.tpatt   = InputStruct_ssa.TPATTERN;
+            acqpar.ndrop   = [InputStruct_ssa.frun(nr).DROP_first InputStruct_ssa.frun(nr).DROP_last];
+            acqpar.tr_msec = InputStruct_ssa.TR_MSEC;
+            acqpar.physamp_msec = InputStruct_ssa.PHYSAMP_MSEC;
+            pfun( sprintf('%s/prewarp/func%u_despike.nii.gz',opath2f,nr), sprintf('func%u',nr), sprintf('%s/prewarp',opath2f), sprintf('%s/physio%u.puls.1D',opath0,nr), sprintf('%s/physio%u.resp.1D',opath0,nr), acqpar, PipeStruct_aug.(Step)(2:end) );  
         end
 
         % >>> Slice-Timing Correction
@@ -1305,8 +1298,12 @@ for ns=subj_list_for_proc % step through func-proc (block-2)
         %
         if analysis_struct.uses_taskfile>0
             out_analysis = pfun( volcel, InputStruct_ssa.task_info, ParamStruct_aug );  
+            % preserve task-info
+            out_analysis.task_info = InputStruct_ssa.task_info;
         elseif analysis_struct.uses_roifile>0
             out_analysis = pfun( volcel, InputStruct_ssa.seed_info, ParamStruct_aug );  
+            % preserve seed-info
+            out_analysis.seed_info = InputStruct_ssa.seed_info;
         else
             out_analysis = pfun( volcel, ParamStruct_aug );  
         end
