@@ -1,6 +1,8 @@
 function amask_AF1(Adataset, Basedset, odir, ParamCell)
 %
-% .AFNI-based anatomical brain masking, SSwarper based
+% .amask_AF1:
+% .anatomical masking using AFNI utilities
+% .adapted from @SSwarper script, uses only initial warp+mask part
 
 if isempty(ParamCell) || isempty(ParamCell{1})
     doTouchup = False;

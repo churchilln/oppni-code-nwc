@@ -1,6 +1,21 @@
 function amask_AF1(Adataset, Basedset, odir, ParamCell)
 %
-% .AFNI-based anatomical brain masking, SSwarper based
+% .amask_AF1:
+% .anatomical masking using AFNI utilities
+% .adapted from @SSwarper script, uses only initial warp+mask part
+
+if isempty(ParamCell) || isempty(ParamCell{1})
+    doTouchup = False;
+else
+    doTouchup = ParamCell{1};
+    if strcmpi(doTouchup,'True')
+        doTouchup=True;
+    elseif strcmpi(doTouchup,'False')
+        doTouchup=False;
+    else
+        error('doTouchup option must be True or False!')
+    end
+end
 
 % Adataset = 'inputdataset.nii';  %# req/ input dataset
 % SubID    = 'subjID';            %# req/ the subject ID
@@ -121,9 +136,19 @@ if ~exist( sprintf('%s/anatBrainMask.nii.gz',odir) ,'file')
         
         %# Throw in an automask step to clean up the outer edges [18 Jun 2019]
         unix(sprintf('rm -f %s/de3.nii.gz %s/anatSS.nii.gz',pref,pref));
-        unix(sprintf('3dAutomask -apply_prefix %s/anatSSd.nii.gz -prefix %s/anatBrainMask.nii.gz  %s/anatSSc.nii.gz',pref,odir,pref)); % MODIFIED=> create anatBrainMask.nii!
+        unix(sprintf('3dAutomask -apply_prefix %s/anatSSd.nii.gz -prefix %s/anatBrainMask_unt.nii.gz  %s/anatSSc.nii.gz',pref,pref,pref)); % MODIFIED=> create anatBrainMask.nii!
         unix(sprintf('mv -f %s/anatSSd.nii.gz %s/anatSS.nii.gz',pref,pref));
         unix(sprintf('rm -f %s/anatSSc.nii.gz',pref));
+
+        %--> --> --> Extra "Touchup" step if requested
+        if doTouchup
+            unix(sprintf('fslmaths %s -mul %s/anatBrainMask_unt %s/anat_midmsk.nii.gz',Adataset,pref,pref))
+            unix(sprintf('bet %s/anat_midmsk.nii.gz %s/remsk_bet -f 0.3 -m',pref,pref));
+            unix(sprintf('cp %s/remsk_bet_mask.nii.gz %s/anatBrainMask.nii.gz',pref,odir))
+        else
+            unix(sprintf('cp %s/anatBrainMask_unt.nii.gz %s/anatBrainMask.nii.gz',pref,odir))
+        end
+
     else
         disp('masking - tidied up mask already exists?? skipping??')
     end

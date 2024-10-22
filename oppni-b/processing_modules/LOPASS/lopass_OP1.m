@@ -1,4 +1,8 @@
 function datamat_filt = lopass_OP1( datamat, TR_MSEC, ParamCell )
+%
+% .lopass_OP1:
+% .low-pass filtering to remove high-frequency signal fluctuations  (mainly thermal/physiological noise) 
+% .uses a Butterworth filter with >0.10 stopband / <0.08 passband
 
 [Nvox Ntime] = size(datamat); % matrix dimensions
 % using simple Butterworth filter -- linear phase/ flat frequency, rolloff not great but this is tolerable for fmri

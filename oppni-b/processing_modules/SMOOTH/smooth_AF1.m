@@ -1,4 +1,8 @@
 function smooth_AF1( Funcfile, prefix, odir, ParamCell )
+%
+% .smooth_AF1:
+% .spatial smoothing of images to improve SNR with AFNI utilities
+% .uses 3dmerge module
 
 fwhm = ParamCell{1};
 

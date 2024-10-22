@@ -1,5 +1,8 @@
 function aseg_FL1( Anatmasked, Mask, odir, ParamCell )
-
+%
+% .aseg_FL1:
+% .anatomical tissue segmentation using FSL utilities
+% .implements fast algorithm
 
 % prefix for temp files
 pref = [odir,'/__opptmp_p2anat_aseg'];

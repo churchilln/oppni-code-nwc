@@ -1,4 +1,8 @@
 function tshift_AF1( Funcfile, prefix, odir, tpatt, ParamCell )
+%
+% .tshift_AF1:
+% .slice-timing correction using AFNI utilities
+% .uses 3dTshift module
 
 % odir => sprintf('%s/prewarp',opath2f)
 % prefix => sprintf('func%u',nr)

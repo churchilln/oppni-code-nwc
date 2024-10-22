@@ -1,4 +1,8 @@
 function [Xreg,stat] = gsreg_OP1( datamat, ParamCell )
+%
+% .gsreg_OP1:
+% .global signal estimation for denoising
+% .implements both global average and PCA approaches
 
 modelstr = ParamCell{1};
 stat = [];

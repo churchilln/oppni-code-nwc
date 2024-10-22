@@ -1,4 +1,8 @@
 function fwarp_AF1( Funcfile_set, prefix_set, odir1, odir2, base_set, Anatloc, ParamCell )
+%
+% .fwarp_AF1:
+% .functional warping using AFNI utilities
+% .adapted from afni_proc.py script, using outputs from @SSwarper
 
 % basic "recommended" func warping protocol
 % > expects certain formatting in Anatloc folder!

@@ -1,4 +1,9 @@
 function fwarp_AF2( Funcfile_set, prefix_set, odir1, odir2, base_set, Anatloc, ParamCell )
+%
+% .now-deprecated AFNI-based functional warping, used for non-T1 anatomic
+%  data. fwarp_AF1 with special flag is now preferred, this is only kept
+%  for back-checking purposes
+
 
 % func warping same as AF1, but v minor tweaks for non-t1
 % compatibility... see ln.47

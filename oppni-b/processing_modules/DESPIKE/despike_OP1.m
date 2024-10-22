@@ -1,4 +1,8 @@
 function despike_OP1( Funcfile, prefix, odir, base, ParamCell )
+%
+% .amask_OP1:
+% .removal of functional outlier volumes/slices
+% .implements DESPIKE script
 
 type = ParamCell{1};
 

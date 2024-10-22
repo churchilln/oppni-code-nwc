@@ -1,5 +1,10 @@
 function [Xreg,stat] = roireg_OP3( functional_run, roi_paths, ParamCell )
 %
+% .roireg_OP3:
+% .regression of physio signals from WM/CSF/high-variance areas
+% .uses previously specified masks
+
+
 % ParamCell = {'CSF_LV_bilat'/'CSF_LV_left+CSF_LV_right+WM_CnS','PCA'/'AVG'}
 %
 % updated --> does either average or PCA-1 on set of tissue subregions

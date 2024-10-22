@@ -10,4 +10,4 @@
 %                       Basedset = path+full name of reference template
 %                           odir = directory to store corrected file (output)
 %                     (ParamCell = supplemental parameters)
-%
+%                                   arg1 = doTouchUp (extra bet mask in cases where non-brain chunks included) 

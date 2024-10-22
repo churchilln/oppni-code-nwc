@@ -1,4 +1,8 @@
 function fwarp_AN1( Funcfile_set, prefix_set, odir1, odir2, base_set, Anatloc, ParamCell )
+%
+% .awarp_AN1:
+% .anatomical warping using ANTs utilities
+% .kludged together from some existing sample scripts!
 
 % error('need to implement resampling of warped anatomic reference!!')
 % error('This option currently disabled -- still needs detailed QC!')

@@ -1,4 +1,8 @@
 function ricor_PI1( Funcfile, prefix, odir, pulsfile, respfile, acqpar, ParamCell)
+%
+% .ricor_PI1:
+% .regression of cardiac and respiratory signals' phase effects with PhysIO utilities 
+% .uses "tapas_physio_main_create_regressors" standalone function, then applies slicewise regression
 
 pref = [odir,'/__opptmp_p2func_ricor'];
 

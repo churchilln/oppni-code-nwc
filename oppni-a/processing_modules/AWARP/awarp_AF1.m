@@ -1,9 +1,16 @@
 function awarp_AF1(Adataset, Maskdset, Basedset, odir, ParamCell)
+%
+% .awarp_AF1:
+% .anatomical warping using AFNI utilities
+% .adapted from @SSwarper script, uses only latter warping part with predefined mask 
 
 % Adataset = 'inputdataset.nii';  %# req/ input dataset
 % SubID    = 'subjID';            %# req/ the subject ID
 % Basedset = 'basedset.nii';       %# req/ reference dset- must have 4 bricks
 % odir     = 'output';             %# opt/ output dir
+
+% based on modification of afni @SSwarper --> edited to take in arbitrary mask
+%                                             subsequent warping done from scratch 
 
 warpscale  = '1';        %# def=1; lower warpscale -> less flexible warps may be useful if odd bumps occur.  vals: [0.1, 1.0] 
 minp       = 11;       %# def="11"; the minimum warp patch size

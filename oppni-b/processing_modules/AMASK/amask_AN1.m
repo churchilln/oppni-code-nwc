@@ -1,6 +1,8 @@
 function amask_AN1(Adataset, Basedset, odir, ParamCell)
 %
-% .ANTS-based anatomical brain masking
+% .amask_AN1:
+% .anatomical masking using ANTs utilities
+% .implements antsBrainExtraction.sh script 
 
 if isempty(ParamCell) || isempty(ParamCell{1})
     doTouchup = false;

@@ -1,6 +1,21 @@
 function amask_AN1(Adataset, Basedset, odir, ParamCell)
 %
-% .ANTS-based anatomical brain masking
+% .amask_AN1:
+% .anatomical masking using ANTs utilities
+% .implements antsBrainExtraction.sh script 
+
+if isempty(ParamCell) || isempty(ParamCell{1})
+    doTouchup = false;
+else
+    doTouchup = ParamCell{1};
+    if strcmpi(doTouchup,'True')
+        doTouchup=true;
+    elseif strcmpi(doTouchup,'False')
+        doTouchup=false;
+    else
+        error('doTouchup option must be True or False!')
+    end
+end
 
 doclean = 1;
 
@@ -38,7 +53,14 @@ if ~exist( sprintf('%s/anatBrainMask.nii.gz',odir) ,'file')
 
     unix(sprintf('antsBrainExtraction.sh -d 3 -a %s -e %s/Base_skullon.nii.gz -m %s/Base_mask.nii.gz -o %s/amsk',Adataset, pref, pref,pref));
 
-    unix(sprintf('cp %s/amskBrainExtractionMask.nii.gz %s/anatBrainMask.nii.gz',pref,odir));
+    %--> --> --> Extra "Touchup" step if requested
+    if doTouchup
+        unix(sprintf('fslmaths %s -mul %s/amskBrainExtractionMask %s/anat_midmsk.nii.gz',Adataset,pref,pref))
+        unix(sprintf('bet %s/anat_midmsk.nii.gz %s/remsk_bet -f 0.3 -m',pref,pref));
+        unix(sprintf('cp %s/remsk_bet_mask.nii.gz %s/anatBrainMask.nii.gz',pref,odir))
+    else
+        unix(sprintf('cp %s/amskBrainExtractionMask.nii.gz %s/anatBrainMask.nii.gz',pref,odir))
+    end
 
     %# ------------------------------------------------------------------
     %## MODIFIED=> Clean up the junk, keeps only anatBrainMask

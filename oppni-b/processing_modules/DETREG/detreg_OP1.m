@@ -1,4 +1,8 @@
 function [Xreg,stat] = detreg_OP1( Nt, TR_MSEC, ParamCell )
+%
+% .detreg_OP1:
+% .estimation of low-frequency basis for general denoising 
+% .uses a legendre polynomial basis
 
 ord = ParamCell{1};
 

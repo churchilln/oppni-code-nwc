@@ -1,4 +1,8 @@
 function ricor_AF1( Funcfile, prefix, odir, pulsfile, respfile, acqpar, ParamCell)
+%
+% .ricor_AF1:
+% .regression of cardiac and respiratory signals' phase effects with AFNI utilities 
+% .uses 3dretroicor module
 
 pref = [odir,'/__opptmp_p2func_ricor'];
 
