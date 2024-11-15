@@ -1,4 +1,4 @@
-function P0_removeDirectories( inputfile, pipelinefile, paramlist, outpath, PartToDelete )
+function P0_fmri_removeDirectories( inputfile, pipelinefile, paramlist, outpath, PartToDelete )
 %
 % . this script: 
 % . strips out a specific pipeline
@@ -120,7 +120,10 @@ else
             cell_idx_todel.P1 = ix; % row of cell array to del
             pipe_idx_todel.P1 = pipe_key.P1(cell_idx_todel.P1,1); % name of folder todel
             % 1st descend - all p2s containing p1
-            cell_idx_todel.P2  = find( contains( pipe_key.P2(:,2), PipeStruct.Seg_ID ) ); %
+            ixl = strfind( PipeStruct.P1_ID, '#P1#' );
+            p1wpart = [PipeStruct.P1_ID(1:ixl-2),'-#'];
+            p1ppart = [PipeStruct.P1_ID(ixl:end),'-#'];
+            cell_idx_todel.P2  = find( contains( pipe_key.P2(:,2), p1wpart ) & contains( pipe_key.P2(:,2), p1ppart ) ); %
             pipe_idx_todel.P2  = pipe_key.P2( cell_idx_todel.P2, 1 );
         else
             error('pipeline block P1 not found -- does this pipeline exist?')

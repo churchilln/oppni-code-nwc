@@ -32,7 +32,8 @@ end
 outpath = fullfile(outpath,'fmri_proc'); % subdir should be fmri_proc
 if ~exist(outpath,'dir') error('fmri proc directory does not exist!'); end
 e=dir([outpath,'*']); % dir to get absolute
-outpath = fullfile(e.folder,e.name); % convert to absolute
+if ~strcmpi( e(1).name, 'fmri_proc') error('first dir should be "fmri_proc"'); end
+outpath = fullfile(e(1).folder,e(1).name); % convert to absolute
 % now check for expected raw data files
 File_Existence_Checker_fmri(InputStruct_aug,outpath,0); clear InputStruct_aug;
 

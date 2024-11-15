@@ -8,7 +8,7 @@ if CODE_PATH(end)~='/'
 end
 
 % pipe steps
-steplist = {'PNAME','AMASK','AWARP','ASEG','DESPIKE','RICOR','TSHIFT','FWARP','SMOOTH','DETREG','GSREG','MOTREG','ROIREG','TASKREG','LOPASS','COMPFILT'}; % ,'PHYCOR'
+steplist = {'PNAME','AMASK','AWARP','ASEG','DESPIKE','RICOR','TSHIFT','FWARP','SMOOTH','DETREG','GSREG','MOTREG','ROIREG','RVHR','TASKREG','LOPASS','COMPFILT'}; % ,'PHYCOR'
 
 % append unique pipeline name
 

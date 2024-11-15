@@ -18,17 +18,17 @@ Xreg=[];
 for i=1:numel(modelstr)
     
     if strcmpi(modelstr{i},'L')
-        Xreg = [Xreg zscore(X)];
-    elseif strcmpi(modelstr{i},'Q')
-        Xreg = [Xreg zscore(X.^2)];
-    elseif strcmpi(modelstr{i},'LD') || strcmpi(modelstr{i},'DL')
-        Xreg = [Xreg zscore( [zeros(1,size(X,2)); X(2:end,:)-X(1:end-1,:)] )];
-    elseif strcmpi(modelstr{i},'QD')
-       xtmp = X.^2;
-       Xreg = [Xreg zscore( [zeros(1,size(xtmp,2)); xtmp(2:end,:)-xtmp(1:end-1,:)] )];
-    elseif strcmpi(modelstr{i},'DQ')
-        xtmp = [zeros(1,size(X,2)); X(2:end,:)-X(1:end-1,:)];
-        Xreg = [Xreg zscore(xtmp.^2)];
+        Xreg = [zscore(X)];
+    elseif strcmpi(modelstr{i},'LQ')
+        Xreg = [zscore(X) zscore(X.^2)];
+    elseif strcmpi(modelstr{i},'LD')
+        Xreg = [zscore(X) zscore( [zeros(1,size(X,2)); X(2:end,:)-X(1:end-1,:)] )];
+    elseif strcmpi(modelstr{i},'LQD') % linear and quad., +derivative of both
+        xtmp = X.^2;
+        Xreg = [zscore(X) zscore(xtmp), zscore([zeros(1,size(X,2)); X(2:end,:)-X(1:end-1,:)]) zscore( [zeros(1,size(xtmp,2)); xtmp(2:end,:)-xtmp(1:end-1,:)] )];
+    elseif strcmpi(modelstr{i},'LDQ') % linear and deriv, +quadratic of both
+        xtmp = [zeros(1,size(X,2)); X(2:end,:)-X(1:end-1,:)]; % deriv.
+        Xreg = [zscore(X) zscore(xtmp), zscore(X.^2) zscore(xtmp.^2)];
     else
         error('unrecognized motreg arg %s',modelstr{i})
     end

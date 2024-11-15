@@ -260,7 +260,7 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
         % execute step:
         pfun( sprintf('%s/anat_procss.nii.gz',opath2a), sprintf('%s/anatBrainMask.nii.gz',opath2a), opath3a, PipeStruct_aug.(Step)(2:end) );  
     end
-    
+
     % extra step: warping the anatomical segmentations into template space
     tisslist = {'CSF','GM','WM'}; % list tissues in increasing order of T1 intensity
     for i=1:3
@@ -279,200 +279,200 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
         end
     end
 
-    fprintf('\n===> subj %s (%u/%u), physio. processing...\n',subject_list{ns},ns,numel(subject_list)),
-    %% =======================================================================
-    %%      PHYSIO Processing ...
-    %% =======================================================================
-
-    fprintf('\n===> phys-proc. now on subj %u/%u: %s...\n',ns,numel(subject_list),subject_list{ns}),
-    
-    disp('nothing for physio-proc so far. put in soon!')
-
-    fprintf('\n===> subj %s (%u/%u), func. processing (part-1)...\n',subject_list{ns},ns,numel(subject_list)),
-    %% =======================================================================
-    %%      FUNC Processing, Block-1 ...
-    %% =======================================================================
-
-    %%%%%========== compatibility adjustments for BLOCK1 ... RICOR only
-    missing_physio=0;
-    for nr=1:InputStruct_ssa.N_func
-        if isempty(InputStruct_ssa.frun(nr).PHYSIO_filename)
-            missing_physio=missing_physio+1;
-        end
-    end
-    if missing_physio>0 && ~strcmpi(PipeStruct_aug.RICOR{1},'OFF')
-        warning('subject %s has %u/%u runs with missing physio. Turning RICOR off!',InputStruct_ssa.PREFIX, missing_physio,InputStruct_ssa.N_func)
-        PipeStruct_aug.RICOR{1}='OFF';
-    end
-    %%%%%========== compatibility adjustments, done
-
-    % --> NB: block-1 processing gets split into prewarp/warp/postwarp subfolders for ease of debugging
-    
-    % clear for variable run lengths between subj.
-    clear prefix_set Funcfile_set base_set prefix_set_wrp Funcfile_set_wrp;
-
-    for nr=1:InputStruct_ssa.N_func
-
-        % tag for rawdata in case scan dropping was performed
-        if InputStruct_ssa.frun(nr).DROP_first>0 || InputStruct_ssa.frun(nr).DROP_last>0
-            drop_tag = '_drop';
-        else
-            drop_tag = '';
-        end
-
-        % * the steps below (INIMOT, DESPIKE, RICOR, TSHIFT) do slice-specific processing before 
-        % we do any deobliqueing/alignment which destroys slice-based information
-        
-        % INIMOT is constructing some preliminary estimates of displacement -- finds the minimum-displacement volume for motion correction later 
-        if strcmpi(ParamStruct_aug.INIMOT{1},'OP1')
-            motref_0rel = inimot_OP1( sprintf('%s/func%u%s.nii.gz',opath0,nr,drop_tag), sprintf('func%u',nr), sprintf('%s/init_mot_estim',opath1f) );
-        else
-            error('unrecognized initial motion estimator?!')
-        end
-
-        % >>> Removing "Spikes" in fMRI data
-        Step = 'DESPIKE';
-        if strcmpi(PipeStruct_aug.(Step){1},'OFF')
-            unix(sprintf('cp %s/func%u%s.nii.gz %s/prewarp/func%u_despike.nii.gz',opath0,nr,drop_tag, opath2f,nr));
-        else
-            % get function handle for analysis model of interest
-            currPath=pwd;                               % get current path
-            cd(pipeline_struct.(Step).filepath);               % jump to module directory
-            pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
-            cd(currPath);                               % jump back to current path
-            % execute step:
-            pfun( sprintf('%s/func%u%s.nii.gz',opath0,nr,drop_tag), sprintf('func%u',nr), sprintf('%s/prewarp',opath2f), motref_0rel, PipeStruct_aug.(Step)(2:end) );  
-        end
-
-        % >> Pipeline Step #5: "RICOR"
-        Step = 'RICOR';
-        if strcmpi(PipeStruct_aug.(Step){1},'OFF')
-            unix(sprintf('cp %s/prewarp/func%u_despike.nii.gz %s/prewarp/func%u_ricor.nii.gz',opath2f,nr, opath2f,nr));
-        else
-            % get function handle for analysis model of interest
-            currPath=pwd;                               % get current path
-            cd(pipeline_struct.(Step).filepath);               % jump to module directory
-            pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
-            cd(currPath);                               % jump back to current path
-            % execute step:
-            clear acqpar;
-            acqpar.tpatt   = InputStruct_ssa.TPATTERN;
-            acqpar.ndrop   = [InputStruct_ssa.frun(nr).DROP_first InputStruct_ssa.frun(nr).DROP_last];
-            acqpar.tr_msec = InputStruct_ssa.TR_MSEC;
-            acqpar.physamp_msec = InputStruct_ssa.PHYSAMP_PR_MSEC;
-            pfun( sprintf('%s/prewarp/func%u_despike.nii.gz',opath2f,nr), sprintf('func%u',nr), sprintf('%s/prewarp',opath2f), sprintf('%s/physio%u.puls.1D',opath0,nr), sprintf('%s/physio%u.resp.1D',opath0,nr), acqpar, PipeStruct_aug.(Step)(2:end) );  
-        end
-
-        % >>> Slice-Timing Correction
-        Step = 'TSHIFT';
-        if strcmpi(PipeStruct_aug.(Step){1},'OFF')
-            unix(sprintf('cp %s/prewarp/func%u_ricor.nii.gz %s/prewarp/func%u_tshift.nii.gz',opath2f,nr, opath2f,nr));
-        else
-            % get function handle for analysis model of interest
-            currPath=pwd;                               % get current path
-            cd(pipeline_struct.(Step).filepath);               % jump to module directory
-            pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
-            cd(currPath);                               % jump back to current path
-            % execute step:
-            pfun( sprintf('%s/prewarp/func%u_ricor.nii.gz',opath2f,nr), sprintf('func%u',nr), sprintf('%s/prewarp',opath2f), InputStruct_ssa.TPATTERN, PipeStruct_aug.(Step)(2:end) );  
-        end
-
-        % fixing orientation stuff -- adjusting for obliquity, switching to standard mni-compatible orientation 
-        if ~exist(sprintf('%s/prewarp/func%u_2std.nii.gz',opath2f,nr),'file')
-            unix(sprintf('3dWarp -oblique2card -prefix %s/prewarp/func%u_deob.nii.gz -wsinc5 %s/prewarp/func%u_tshift.nii.gz' , opath2f,nr, opath2f,nr));
-            unix(sprintf('fslreorient2std %s/prewarp/func%u_deob.nii.gz %s/prewarp/func%u_2std.nii.gz',opath2f,nr,opath2f,nr));
-            if exist(sprintf('%s/prewarp/func%u_2std.nii.gz',opath2f,nr),'file')
-                unix(sprintf('rm %s/prewarp/func%u_deob.nii.gz', opath2f,nr)); % not really useful intermediate - delete it
-            else
-                error('failed to create deob/reoriented functional file')
-            end
-        else
-            disp('skipping alignment prep...')
-        end
-
-        % store fields for FWARP step later on
-        prefix_set{nr} = sprintf('func%u',nr);
-        Funcfile_set{nr} = sprintf('%s/prewarp/func%u_2std.nii.gz',opath2f,nr);
-        base_set(nr) = motref_0rel;
-        % and for SMOTTINGT
-        prefix_set_wrp{nr} = sprintf('func%u_warped',nr);
-        Funcfile_set_wrp{nr} = sprintf('%s/postwarp/func%u_warped.nii.gz',opath2f,nr);
-    end
-
-    % pre-specifying some input/output directories
-    odir1 = sprintf('%s/warp',opath2f);
-    odir2 = sprintf('%s/postwarp',opath2f);
-    Anatloc = opath2a;
-
-    % >>> Functional Warping
-    Step = 'FWARP';
-    if strcmpi(PipeStruct_aug.(Step){1},'OFF')
-        error('cannot turn this step off!');
-    else
-        % get function handle for analysis model of interest
-        currPath=pwd;                               % get current path
-        cd(pipeline_struct.(Step).filepath);               % jump to module directory
-        pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
-        cd(currPath);                               % jump back to current path
-        % execute step:
-        pfun( Funcfile_set, prefix_set, odir1, odir2, base_set, Anatloc, PipeStruct_aug.(Step)(2:end) );  
-    end
-
-    % >>> Spatial Smoothing
-    Step = 'SMOOTH';
-    if strcmpi(PipeStruct_aug.(Step){1},'OFF')
-        error('cannot turn this step off!');
-    else
-        % get function handle for analysis model of interest
-        currPath=pwd;                               % get current path
-        cd(pipeline_struct.(Step).filepath);               % jump to module directory
-        pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
-        cd(currPath);                               % jump back to current path
-        % execute step:
-        for ni=1:numel(Funcfile_set_wrp)
-            pfun( Funcfile_set_wrp{ni}, prefix_set_wrp{ni}, odir2, PipeStruct_aug.(Step)(2:end) );  
-        end
-    end
-
-    % extra step: make mask, mean, sd maps --> run-1 mean and sd used for creating group-level maps. For runs >1, just kept for qc purposes
-    for nr=1:InputStruct_ssa.N_func
-        if ~exist(sprintf('%s/postwarp/func%u_warped_mask.nii.gz',opath2f,nr),'file') || ...
-           ~exist(sprintf('%s/postwarp/func%u_warped_tav.nii.gz',opath2f,nr),'file')  || ...
-           ~exist(sprintf('%s/postwarp/func%u_warped_tsd.nii.gz',opath2f,nr),'file') 
-
-            unix(sprintf('3dAutomask -prefix %s/postwarp/func%u_warped_mask.nii.gz %s/postwarp/func%u_warped.nii.gz',opath2f,nr,opath2f,nr));
-            unix(sprintf('3dTstat -mean  -prefix %s/postwarp/func%u_warped_tav.nii.gz %s/postwarp/func%u_warped.nii.gz',opath2f,nr,opath2f,nr));
-            unix(sprintf('3dTstat -stdev -prefix %s/postwarp/func%u_warped_tsd.nii.gz %s/postwarp/func%u_warped.nii.gz',opath2f,nr,opath2f,nr));
-        else
-            disp('func mask done - skipping ahead.')
-        end
-    end
-    % extra step: tidied up functional mask using anatomical data - for later group mask construction
-    if ~exist( sprintf('%s/postwarp/func%u_warped_mask_clean.nii.gz',opath2f,nr),'file')
-        nr=1; % run-1 only
-        if ~exist(sprintf('%s/warp/anat_warped_rs.nii.gz',opath2f),'file') || ...
-           ~exist(sprintf('%s/warp/anat_warped_rs_mask.nii.gz',opath2f),'file') || ...
-           ~exist(sprintf('%s/postwarp/func%u_warped_mask_clean.nii.gz',opath2f,nr),'file')
-
-            unix(sprintf('3dresample -master %s/postwarp/func%u_warped_mask.nii.gz -input %s/anat_warped.nii.gz -prefix %s/warp/anat_warped_rs.nii.gz',opath2f,nr,opath2a,opath2f));
-            unix(sprintf('3dmask_tool -dilate_input 5 -5 -fill_holes -input %s/warp/anat_warped_rs.nii.gz -prefix %s/warp/anat_warped_rs_mask.nii.gz',opath2f,opath2f))
-            unix(sprintf('3dmask_tool -input %s/postwarp/func%u_warped_mask.nii.gz %s/warp/anat_warped_rs_mask.nii.gz -inter -prefix %s/postwarp/func%u_warped_mask_clean.nii.gz',opath2f,nr,opath2f,opath2f,nr))
-        else
-            disp('clean func mask done - skipping ahead.')
-        end
-    else
-        disp('skipping newspace masking...')
-    end
-    % extra step: resampling tissue segmentations into functional space
-    tisslist = {'CSF','GM','WM'}; % tissues in increasing order of T1 intensity
-    for i=1:3
-        if ~exist( sprintf('%s/anat_seg_%s_resam.nii.gz',opath3f,tisslist{i}),'file')
-            unix(sprintf('3dresample -master %s/postwarp/func1_warped_mask_clean.nii.gz -input %s/anat_seg_%s_warped.nii.gz -prefix %s/anat_seg_%s_resam.nii.gz',...
-                opath2f,opath3a,tisslist{i},opath3f,tisslist{i}));
-        else
-            disp('skipping tissue seg warping...')
-        end
-    end
+    % % fprintf('\n===> subj %s (%u/%u), physio. processing...\n',subject_list{ns},ns,numel(subject_list)),
+    % % %% =======================================================================
+    % % %%      PHYSIO Processing ...
+    % % %% =======================================================================
+    % % 
+    % % fprintf('\n===> phys-proc. now on subj %u/%u: %s...\n',ns,numel(subject_list),subject_list{ns}),
+    % % 
+    % % disp('nothing for physio-proc so far. put in soon!')
+    % % 
+    % % fprintf('\n===> subj %s (%u/%u), func. processing (part-1)...\n',subject_list{ns},ns,numel(subject_list)),
+    % % %% =======================================================================
+    % % %%      FUNC Processing, Block-1 ...
+    % % %% =======================================================================
+    % % 
+    % % %%%%%========== compatibility adjustments for BLOCK1 ... RICOR only
+    % % missing_physio=0;
+    % % for nr=1:InputStruct_ssa.N_func
+    % %     if isempty(InputStruct_ssa.frun(nr).PHYSIO_filename)
+    % %         missing_physio=missing_physio+1;
+    % %     end
+    % % end
+    % % if missing_physio>0 && ~strcmpi(PipeStruct_aug.RICOR{1},'OFF')
+    % %     warning('subject %s has %u/%u runs with missing physio. Turning RICOR off!',InputStruct_ssa.PREFIX, missing_physio,InputStruct_ssa.N_func)
+    % %     PipeStruct_aug.RICOR{1}='OFF';
+    % % end
+    % % %%%%%========== compatibility adjustments, done
+    % % 
+    % % % --> NB: block-1 processing gets split into prewarp/warp/postwarp subfolders for ease of debugging
+    % % 
+    % % % clear for variable run lengths between subj.
+    % % clear prefix_set Funcfile_set base_set prefix_set_wrp Funcfile_set_wrp;
+    % % 
+    % % for nr=1:InputStruct_ssa.N_func
+    % % 
+    % %     % tag for rawdata in case scan dropping was performed
+    % %     if InputStruct_ssa.frun(nr).DROP_first>0 || InputStruct_ssa.frun(nr).DROP_last>0
+    % %         drop_tag = '_drop';
+    % %     else
+    % %         drop_tag = '';
+    % %     end
+    % % 
+    % %     % * the steps below (INIMOT, DESPIKE, RICOR, TSHIFT) do slice-specific processing before 
+    % %     % we do any deobliqueing/alignment which destroys slice-based information
+    % % 
+    % %     % INIMOT is constructing some preliminary estimates of displacement -- finds the minimum-displacement volume for motion correction later 
+    % %     if strcmpi(ParamStruct_aug.INIMOT{1},'OP1')
+    % %         motref_0rel = inimot_OP1( sprintf('%s/func%u%s.nii.gz',opath0,nr,drop_tag), sprintf('func%u',nr), sprintf('%s/init_mot_estim',opath1f) );
+    % %     else
+    % %         error('unrecognized initial motion estimator?!')
+    % %     end
+    % % 
+    % %     % >>> Removing "Spikes" in fMRI data
+    % %     Step = 'DESPIKE';
+    % %     if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+    % %         unix(sprintf('cp %s/func%u%s.nii.gz %s/prewarp/func%u_despike.nii.gz',opath0,nr,drop_tag, opath2f,nr));
+    % %     else
+    % %         % get function handle for analysis model of interest
+    % %         currPath=pwd;                               % get current path
+    % %         cd(pipeline_struct.(Step).filepath);               % jump to module directory
+    % %         pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+    % %         cd(currPath);                               % jump back to current path
+    % %         % execute step:
+    % %         pfun( sprintf('%s/func%u%s.nii.gz',opath0,nr,drop_tag), sprintf('func%u',nr), sprintf('%s/prewarp',opath2f), motref_0rel, PipeStruct_aug.(Step)(2:end) );  
+    % %     end
+    % % 
+    % %     % >> Pipeline Step #5: "RICOR"
+    % %     Step = 'RICOR';
+    % %     if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+    % %         unix(sprintf('cp %s/prewarp/func%u_despike.nii.gz %s/prewarp/func%u_ricor.nii.gz',opath2f,nr, opath2f,nr));
+    % %     else
+    % %         % get function handle for analysis model of interest
+    % %         currPath=pwd;                               % get current path
+    % %         cd(pipeline_struct.(Step).filepath);               % jump to module directory
+    % %         pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+    % %         cd(currPath);                               % jump back to current path
+    % %         % execute step:
+    % %         clear acqpar;
+    % %         acqpar.tpatt   = InputStruct_ssa.TPATTERN;
+    % %         acqpar.ndrop   = [InputStruct_ssa.frun(nr).DROP_first InputStruct_ssa.frun(nr).DROP_last];
+    % %         acqpar.tr_msec = InputStruct_ssa.TR_MSEC;
+    % %         acqpar.physamp_msec = InputStruct_ssa.PHYSAMP_MSEC;
+    % %         pfun( sprintf('%s/prewarp/func%u_despike.nii.gz',opath2f,nr), sprintf('func%u',nr), sprintf('%s/prewarp',opath2f), sprintf('%s/physio%u.puls.1D',opath0,nr), sprintf('%s/physio%u.resp.1D',opath0,nr), acqpar, PipeStruct_aug.(Step)(2:end) );  
+    % %     end
+    % % 
+    % %     % >>> Slice-Timing Correction
+    % %     Step = 'TSHIFT';
+    % %     if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+    % %         unix(sprintf('cp %s/prewarp/func%u_ricor.nii.gz %s/prewarp/func%u_tshift.nii.gz',opath2f,nr, opath2f,nr));
+    % %     else
+    % %         % get function handle for analysis model of interest
+    % %         currPath=pwd;                               % get current path
+    % %         cd(pipeline_struct.(Step).filepath);               % jump to module directory
+    % %         pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+    % %         cd(currPath);                               % jump back to current path
+    % %         % execute step:
+    % %         pfun( sprintf('%s/prewarp/func%u_ricor.nii.gz',opath2f,nr), sprintf('func%u',nr), sprintf('%s/prewarp',opath2f), InputStruct_ssa.TPATTERN, PipeStruct_aug.(Step)(2:end) );  
+    % %     end
+    % % 
+    % %     % fixing orientation stuff -- adjusting for obliquity, switching to standard mni-compatible orientation 
+    % %     if ~exist(sprintf('%s/prewarp/func%u_2std.nii.gz',opath2f,nr),'file')
+    % %         unix(sprintf('3dWarp -oblique2card -prefix %s/prewarp/func%u_deob.nii.gz -wsinc5 %s/prewarp/func%u_tshift.nii.gz' , opath2f,nr, opath2f,nr));
+    % %         unix(sprintf('fslreorient2std %s/prewarp/func%u_deob.nii.gz %s/prewarp/func%u_2std.nii.gz',opath2f,nr,opath2f,nr));
+    % %         if exist(sprintf('%s/prewarp/func%u_2std.nii.gz',opath2f,nr),'file')
+    % %             unix(sprintf('rm %s/prewarp/func%u_deob.nii.gz', opath2f,nr)); % not really useful intermediate - delete it
+    % %         else
+    % %             error('failed to create deob/reoriented functional file')
+    % %         end
+    % %     else
+    % %         disp('skipping alignment prep...')
+    % %     end
+    % % 
+    % %     % store fields for FWARP step later on
+    % %     prefix_set{nr} = sprintf('func%u',nr);
+    % %     Funcfile_set{nr} = sprintf('%s/prewarp/func%u_2std.nii.gz',opath2f,nr);
+    % %     base_set(nr) = motref_0rel;
+    % %     % and for SMOTTINGT
+    % %     prefix_set_wrp{nr} = sprintf('func%u_warped',nr);
+    % %     Funcfile_set_wrp{nr} = sprintf('%s/postwarp/func%u_warped.nii.gz',opath2f,nr);
+    % % end
+    % % 
+    % % % pre-specifying some input/output directories
+    % % odir1 = sprintf('%s/warp',opath2f);
+    % % odir2 = sprintf('%s/postwarp',opath2f);
+    % % Anatloc = opath2a;
+    % % 
+    % % % >>> Functional Warping
+    % % Step = 'FWARP';
+    % % if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+    % %     error('cannot turn this step off!');
+    % % else
+    % %     % get function handle for analysis model of interest
+    % %     currPath=pwd;                               % get current path
+    % %     cd(pipeline_struct.(Step).filepath);               % jump to module directory
+    % %     pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+    % %     cd(currPath);                               % jump back to current path
+    % %     % execute step:
+    % %     pfun( Funcfile_set, prefix_set, odir1, odir2, base_set, Anatloc, PipeStruct_aug.(Step)(2:end) );  
+    % % end
+    % % 
+    % % % >>> Spatial Smoothing
+    % % Step = 'SMOOTH';
+    % % if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+    % %     error('cannot turn this step off!');
+    % % else
+    % %     % get function handle for analysis model of interest
+    % %     currPath=pwd;                               % get current path
+    % %     cd(pipeline_struct.(Step).filepath);               % jump to module directory
+    % %     pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+    % %     cd(currPath);                               % jump back to current path
+    % %     % execute step:
+    % %     for ni=1:numel(Funcfile_set_wrp)
+    % %         pfun( Funcfile_set_wrp{ni}, prefix_set_wrp{ni}, odir2, PipeStruct_aug.(Step)(2:end) );  
+    % %     end
+    % % end
+    % % 
+    % % % extra step: make mask, mean, sd maps --> run-1 mean and sd used for creating group-level maps. For runs >1, just kept for qc purposes
+    % % for nr=1:InputStruct_ssa.N_func
+    % %     if ~exist(sprintf('%s/postwarp/func%u_warped_mask.nii.gz',opath2f,nr),'file') || ...
+    % %        ~exist(sprintf('%s/postwarp/func%u_warped_tav.nii.gz',opath2f,nr),'file')  || ...
+    % %        ~exist(sprintf('%s/postwarp/func%u_warped_tsd.nii.gz',opath2f,nr),'file') 
+    % % 
+    % %         unix(sprintf('3dAutomask -prefix %s/postwarp/func%u_warped_mask.nii.gz %s/postwarp/func%u_warped.nii.gz',opath2f,nr,opath2f,nr));
+    % %         unix(sprintf('3dTstat -mean  -prefix %s/postwarp/func%u_warped_tav.nii.gz %s/postwarp/func%u_warped.nii.gz',opath2f,nr,opath2f,nr));
+    % %         unix(sprintf('3dTstat -stdev -prefix %s/postwarp/func%u_warped_tsd.nii.gz %s/postwarp/func%u_warped.nii.gz',opath2f,nr,opath2f,nr));
+    % %     else
+    % %         disp('func mask done - skipping ahead.')
+    % %     end
+    % % end
+    % % % extra step: tidied up functional mask using anatomical data - for later group mask construction
+    % % if ~exist( sprintf('%s/postwarp/func%u_warped_mask_clean.nii.gz',opath2f,nr),'file')
+    % %     nr=1; % run-1 only
+    % %     if ~exist(sprintf('%s/warp/anat_warped_rs.nii.gz',opath2f),'file') || ...
+    % %        ~exist(sprintf('%s/warp/anat_warped_rs_mask.nii.gz',opath2f),'file') || ...
+    % %        ~exist(sprintf('%s/postwarp/func%u_warped_mask_clean.nii.gz',opath2f,nr),'file')
+    % % 
+    % %         unix(sprintf('3dresample -master %s/postwarp/func%u_warped_mask.nii.gz -input %s/anat_warped.nii.gz -prefix %s/warp/anat_warped_rs.nii.gz',opath2f,nr,opath2a,opath2f));
+    % %         unix(sprintf('3dmask_tool -dilate_input 5 -5 -fill_holes -input %s/warp/anat_warped_rs.nii.gz -prefix %s/warp/anat_warped_rs_mask.nii.gz',opath2f,opath2f))
+    % %         unix(sprintf('3dmask_tool -input %s/postwarp/func%u_warped_mask.nii.gz %s/warp/anat_warped_rs_mask.nii.gz -inter -prefix %s/postwarp/func%u_warped_mask_clean.nii.gz',opath2f,nr,opath2f,opath2f,nr))
+    % %     else
+    % %         disp('clean func mask done - skipping ahead.')
+    % %     end
+    % % else
+    % %     disp('skipping newspace masking...')
+    % % end
+    % % % extra step: resampling tissue segmentations into functional space
+    % % tisslist = {'CSF','GM','WM'}; % tissues in increasing order of T1 intensity
+    % % for i=1:3
+    % %     if ~exist( sprintf('%s/anat_seg_%s_resam.nii.gz',opath3f,tisslist{i}),'file')
+    % %         unix(sprintf('3dresample -master %s/postwarp/func1_warped_mask_clean.nii.gz -input %s/anat_seg_%s_warped.nii.gz -prefix %s/anat_seg_%s_resam.nii.gz',...
+    % %             opath2f,opath3a,tisslist{i},opath3f,tisslist{i}));
+    % %     else
+    % %         disp('skipping tissue seg warping...')
+    % %     end
+    % % end
 
 % %     % SCRATCH -- extra step: effex maps
 % %     mkdir(sprintf('%s/effex',opath2f));
@@ -486,6 +486,8 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
 % %     map(~isfinite(map))=eps;
 % %     mosaic_viewer( map, 3, [], [], 'jet', 1 )
 end
+
+return;
 
 %% Checkpoint
 
@@ -960,6 +962,11 @@ end
 MBstr = ([outpath,'/_group_level/masks/pipe_',PipeStruct_aug.PNAME{1},'/func_brain_mask_grp.nii']);
 MB = load_untouch_niiz(MBstr);
 maskS = double(MB.img);
+% declare empty struct --> nuisance regressor correlation maps
+RegCorr2.det=[];
+RegCorr2.glb=[];
+RegCorr2.mot=[];
+RegCorr2.roi=[];
 
 for ns=subj_list_for_proc % step through func-proc (block-2)
 
@@ -1038,11 +1045,7 @@ for ns=subj_list_for_proc % step through func-proc (block-2)
         for nr=1:InputStruct_ssa.N_func
     
             if ~exist( [opath4f,'/func',num2str(nr),'_fullproc.mat'],'file') || maskisnew==1 %only do runs with missing outputs / or if mask was just updated
-
-                % declare empty structure for this run
-                f = {'CorrMaps', 'Regressors','Rank'};
-                RegStruc = cell2struct(cell(length(f),1),f);
-
+        
                 % loading data into mats:
                 VSstr = sprintf('%s/postwarp/func%u_warped_smo.nii.gz',opath2f,nr); %***%
                 VS = load_untouch_niiz(VSstr);
@@ -1149,54 +1152,33 @@ for ns=subj_list_for_proc % step through func-proc (block-2)
                 ztmp = zscore(volmatS')';
                 if nr==1 && ~isempty(xdet) && size(xdet,2)>1
                     xtmp = zscore(xdet(:,2:end));
-                    RegStruc.CorrMaps.det = (ztmp*xtmp)./(InputStruct_ssa.frun(nr).Nt_adj-1);
-                    RegStruc.Regressors.det = xdet(:,2:end);
-                else
-                    RegStruc.CorrMaps.det = [];
-                    RegStruc.Regressors.det = [];
+                    RegCorr2.det(:,:,ns) = (ztmp*xtmp)./(InputStruct_ssa.frun(nr).Nt_adj-1);
+                    RegStat.det(ns,:) = statd;
                 end
                 if nr==1 && ~isempty(xglb)
                     xtmp = zscore(xglb);
-                    RegStruc.CorrMaps.glb = (ztmp*xtmp)./(InputStruct_ssa.frun(nr).Nt_adj-1);
-                    RegStruc.Regressors.glb = xglb;
-                else
-                    RegStruc.CorrMaps.glb = [];
-                    RegStruc.Regressors.glb = [];
+                    RegCorr2.glb(:,:,ns) = (ztmp*xtmp)./(InputStruct_ssa.frun(nr).Nt_adj-1);
+                    RegStat.glb(ns,:) = statg;
                 end
                 if nr==1 && ~isempty(xmot)
                     xtmp = zscore(xmot);
-                    RegStruc.CorrMaps.mot = (ztmp*xtmp)./(InputStruct_ssa.frun(nr).Nt_adj-1);
-                    RegStruc.Regressors.mot = xmot;
-                else
-                    RegStruc.CorrMaps.mot = [];
-                    RegStruc.Regressors.mot = [];
+                    RegCorr2.mot(:,:,ns) = (ztmp*xtmp)./(InputStruct_ssa.frun(nr).Nt_adj-1);
+                    RegStat.mot(ns,:) = statm;
                 end
                 if nr==1 && ~isempty(xroi)
                     xtmp = zscore(xroi);
-                    RegStruc.CorrMaps.roi = (ztmp*xtmp)./(InputStruct_ssa.frun(nr).Nt_adj-1);
-                    RegStruc.Regressors.roi = xroi;
-                else
-                    RegStruc.CorrMaps.roi = [];
-                    RegStruc.Regressors.roi = [];
+                    RegCorr2.roi(:,:,ns) = (ztmp*xtmp)./(InputStruct_ssa.frun(nr).Nt_adj-1);
+                    RegStat.roi(ns,:) = statr;
                 end
                 if nr==1 && ~isempty(xrvh)
                     xtmp = zscore(xrvh);
-                    RegStruc.CorrMaps.rvh = (ztmp*xtmp)./(InputStruct_ssa.frun(nr).Nt_adj-1);
-                    RegStruc.Regressors.rvh = xrvh;
-                else
-                    RegStruc.CorrMaps.rvh = [];
-                    RegStruc.Regressors.rvh = [];
+                    RegCorr2.rvh(:,:,ns) = (ztmp*xtmp)./(InputStruct_ssa.frun(nr).Nt_adj-1);
+                    RegStat.rvh(ns,:) = statv;
                 end
                 % --> some regressional stats
-
+        
                 Xnoise = [xdet(:,2:end),xglb,xmot,xroi,xrvh]; % full noise matrix, normed to unit length
                 Xnoise = bsxfun(@rdivide,Xnoise,sqrt(sum(Xnoise.^2)));
-                %
-                % >>> TO ADD: some joint stats on variable importance!
-                %     RegStruc...
-                %
-                save([opath4f,'/func',num2str(nr),'_RegStruc.mat'],'RegStruc');
-
                 [ output ] = GLM_model_fmri( volmatS, [0], [Xnoise], [Xsignal], 1, 1 );
                 volmatF = output.vol_denoi;
             
@@ -1375,6 +1357,8 @@ for ns=subj_list_for_proc % step through func-proc (block-2)
         end
     end
 end
+
+save([outpath,'/_group_level/brain_maps/pipe_',PipeStruct_aug.PNAME{1},'/regstat.mat'],'RegCorr2');
 
 disp('funxionale block-2 done');
 

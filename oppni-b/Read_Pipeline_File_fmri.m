@@ -25,7 +25,7 @@ else
     pipelinestring = pipelinefile; %% just directly assign the string
 end
 
-steplist = {'PNAME','AMASK','AWARP','ASEG','DESPIKE','RICOR','TSHIFT','FWARP','SMOOTH','DETREG','GSREG','MOTREG','ROIREG','TASKREG','LOPASS','COMPFILT'}; % ,'PHYCOR'
+steplist = {'PNAME','AMASK','AWARP','ASEG','DESPIKE','RICOR','TSHIFT','FWARP','SMOOTH','DETREG','GSREG','MOTREG','ROIREG','RVHR','TASKREG','LOPASS','COMPFILT'}; % ,'PHYCOR'
 
 ileft  = strfind( pipelinestring, '[' );
 iright = strfind( pipelinestring, ']' );
@@ -75,10 +75,11 @@ a=sprintf('%s_',PipeStruct.DETREG{:});
 b=sprintf('%s_',PipeStruct.GSREG{:});
 c=sprintf('%s_',PipeStruct.MOTREG{:});
 d=sprintf('%s_',PipeStruct.ROIREG{:});
-e=sprintf('%s_',PipeStruct.TASKREG{:});
-f=sprintf('%s_',PipeStruct.LOPASS{:});
-g=sprintf('%s_',PipeStruct.COMPFILT{:});
-    tmp_P2_ID = ['#P2#','.',a(1:end-1),'.',b(1:end-1),'.',c(1:end-1),'.',d(1:end-1),'.',e(1:end-1),'.',f(1:end-1),'.',g(1:end-1)];
+e=sprintf('%s_',PipeStruct.RVHR{:});
+f=sprintf('%s_',PipeStruct.TASKREG{:});
+g=sprintf('%s_',PipeStruct.LOPASS{:});
+h=sprintf('%s_',PipeStruct.COMPFILT{:});
+    tmp_P2_ID = ['#P2#','.',a(1:end-1),'.',b(1:end-1),'.',c(1:end-1),'.',d(1:end-1),'.',e(1:end-1),'.',f(1:end-1),'.',g(1:end-1),'.',h(1:end-1)];
 
 %--> now rename to capture dependencies
 PipeStruct.Warp_ID = [tmp_Warp_ID];

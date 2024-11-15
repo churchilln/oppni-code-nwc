@@ -75,3 +75,12 @@ Misc. notes on module design:
     > default "safe" settings in align_epi_anat.py step, e.g., -cost lpc+ZZ / flexible affine / -ginormous_move
       seem to generally work well
     > flexible affine with 
+
+
+
+
+
+.when inserting new modules...
+    -in "Read_Pipeline_File_fmri.m" add the option's name in "steplist" (line 28)
+     and add fields to "tmp_P2_ID" (after line 74)
+    -in "check_fmri_processing_model.m" add the option name in "steplist" (line 11)

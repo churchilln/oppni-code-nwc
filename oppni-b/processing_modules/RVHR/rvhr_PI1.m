@@ -1,33 +1,33 @@
-function ricor_PI1( Funcfile, prefix, odir, pulsfile, respfile, acqpar, ParamCell)
+function [Xreg,stat] = rvhr_PI1( Funcfile, pulsfile, respfile, acqpar, ParamCell)
 %
 % .ricor_PI1:
 % .regression of cardiac and respiratory signals' phase effects with PhysIO utilities 
 % .uses "tapas_physio_main_create_regressors" standalone function, then applies slicewise regression
 
-if numel(ParamCell)==1 && isempty(ParamCell{1})
-    CARD_ord  = 2;
-    RESP_ord  = 2;
-    INTER_ord = 0;
-elseif numel(ParamCell)==3
+if isempty(ParamCell)
+    RV_incl = true;
+    HR_incl = true;
+elseif numel(ParamCell)==2
     
-    ixc=find(contains(ParamCell,'CARD-'));
-    ixr=find(contains(ParamCell,'RESP-'));
-    ixi=find(contains(ParamCell,'INTER-'));
+    ixr=find(contains(ParamCell,'RV'));
+    ixh=find(contains(ParamCell,'HR'));
     
-    if isempty(ixc) || isempty(ixr) || isempty(ixi)
-        error('something missing in RICOR params');
+    if isempty(ixr)
+        RV_incl = false;
     else
-        CARD_ord = str2num(ParamCell{ixc}(6:end));
-        RESP_ord = str2num(ParamCell{ixr}(6:end));
-        INTER_ord = str2num(ParamCell{ixi}(6:end));
-    end    
+        RV_incl = true;
+    end
+    if isempty(ixh)
+        HR_incl = false;
+    else
+        HR_incl = true;
+    end
+    
 else
-    error('need to specify 3 fields for RICOR: e.g., CARD-2,RESP-2,INTER-0')
+    error('need to specify 2 fields for RICOR: e.g., CARD-2,RESP-2,INTER-0')
 end
 
 pref = [odir,'/__opptmp_p2func_ricor'];
-
-spec_case = {'alt+z','alt+z2','alt-z','alt-z2','seq+z','seq-z'};
 
 if isempty(acqpar.physamp_msec)
     error('This module needs the physio sampling rate (PHYSAMP_MSEC in the input file)!');
@@ -82,12 +82,12 @@ if ~exist(sprintf('%s/%s_ricor.nii.gz',odir,prefix),'file')
         physio.model.orthogonalise = 'none'; %can include specific physio noise models
         physio.model.output_multiple_regressors = 'multiple_regressors.txt';
         physio.model.output_physio = 'physio.mat';
-        physio.model.retroicor.include = true;
-        physio.model.retroicor.order.c = CARD_ord;
-        physio.model.retroicor.order.r = RESP_ord;
-        physio.model.retroicor.order.cr = INTER_ord;
-        physio.model.rvt.include = false; %should we include this off the start?
-        physio.model.hrv.include = false; %maybe include this after a run of RVT?
+        physio.model.retroicor.include = false;
+        physio.model.rvt.include = RV_incl; %should we include this off the start?
+        physio.model.rvt.method = 'hilbert';
+        physio.model.rvt.delays = 0;
+        physio.model.hrv.include = HR_incl; %maybe include this after a run of RVT?
+        physio.model.hrv.delays = 0;
         physio.verbose.level = 0; %0 if no plot, 1 if just the most important, 2 if you want a bunch, 3 is all
         physio.verbose.process_log = cell(0, 1);
         physio.verbose.fig_handles = zeros(1, 0);
@@ -101,55 +101,60 @@ if ~exist(sprintf('%s/%s_ricor.nii.gz',odir,prefix),'file')
         % Run physiological recording preprocessing and noise modeling
         physio = tapas_physio_main_create_regressors(physio);
 
-        % trimmed array of slice regressors, lag-ordered
-        for i=1:Nslc
-            x = load(sprintf('%s/physio_slice0%02u.mat',pref,i));
-            xmat(:,:,i) = x.physio.model.R( (1+acqpar.ndrop(1)) : (end-acqpar.ndrop(2)) ,:);
-        end
-        % --slice indexing by acq order
-        if sum(strcmpi(acqpar.tpatt,spec_case))>0
-            if     strcmpi(acqpar.tpatt,'alt+z')
-                sliceidx = [1:2:Nslc, 2:2:Nslc];
-            elseif strcmpi(acqpar.tpatt,'alt+z2')
-                sliceidx = [2:2:Nslc, 1:2:Nslc];
-            elseif strcmpi(acqpar.tpatt,'alt-z')
-                if mod(Nslc,2)==0 % even
-                    sliceidx = [fliplr(2:2:Nslc) fliplr(1:2:Nslc)];
-                else % odd
-                    sliceidx = [fliplr(1:2:Nslc) fliplr(2:2:Nslc)];
-                end
-            elseif strcmpi(acqpar.tpatt,'alt-z2')
-                if mod(Nslc,2)==0 % even
-                    sliceidx = [fliplr(1:2:Nslc) fliplr(2:2:Nslc)];
-                else % odd
-                    sliceidx = [fliplr(2:2:Nslc) fliplr(1:2:Nslc)];
-                end
-            elseif strcmpi(acqpar.tpatt,'seq+z')
-                sliceidx = 1:Nslc;
-            elseif strcmpi(acqpar.tpatt,'seq-z')
-                sliceidx = fliplr( 1:Nslc );
-            end
-        else
-            % if custom, assumed ~equi-spaced and match accordingly
-            xtt = load(acqpar.tpatt);
-            sliceidx = sortrows([(1:Nslc)' xtt(:)],2,'ascend');
-        end
+        %>>> need to extract the regressors for RV/HR, take midpoint slice, and adjust for
+        %volume-drops :: 
+%         Xreg = ???;
+%         stat = ???;
 
-        % slice-by-slice regression, as specificed by tpattern
-        % slice idx(i) matched to ith lag-file
-        fvol_den = zeros(size(fvol));
-        for i=1:Nslc
-            i,
-            yslc = reshape( fvol(:,:,sliceidx(i),:), [], Nt); %vox x time
-            % regress it
-            xreg = [ones(Nt,1), xmat(:,:,i) ];
-            beta = yslc * xreg /( xreg'*xreg );
-            yden = yslc - (beta(:,2:end) * xreg(:,2:end)');
-            fvol_den(:,:,sliceidx(i),:) = reshape( yden, size(fvol(:,:,i,:)));
-        end
 
-        V.img = fvol_den;
-        save_untouch_niiz(V,sprintf('%s/%s_ricor.nii.gz',odir,prefix));
+%         % trimmed array of slice regressors, lag-ordered
+%         for i=1:Nslc
+%             x = load(sprintf('%s/physio_slice0%02u.mat',pref,i))
+%             xmat(:,:,i) = x.physio.model.R( (1+acqpar.ndrop(1)) : (end-acqpar.ndrop(2)) ,:);
+%         end
+%         % --slice indexing by acq order
+%         if sum(strcmpi(acqpar.tpatt,spec_case))>0
+%             if     strcmpi(acqpar.tpatt,'alt+z')
+%                 sliceidx = [1:2:Nslc, 2:2:Nslc];
+%             elseif strcmpi(acqpar.tpatt,'alt+z2')
+%                 sliceidx = [2:2:Nslc, 1:2:Nslc];
+%             elseif strcmpi(acqpar.tpatt,'alt-z')
+%                 if mod(Nslc,2)==0 % even
+%                     sliceidx = [fliplr(2:2:Nslc) fliplr(1:2:Nslc)];
+%                 else % odd
+%                     sliceidx = [fliplr(1:2:Nslc) fliplr(2:2:Nslc)];
+%                 end
+%             elseif strcmpi(acqpar.tpatt,'alt-z2')
+%                 if mod(Nslc,2)==0 % even
+%                     sliceidx = [fliplr(1:2:Nslc) fliplr(2:2:Nslc)];
+%                 else % odd
+%                     sliceidx = [fliplr(2:2:Nslc) fliplr(1:2:Nslc)];
+%                 end
+%             elseif strcmpi(acqpar.tpatt,'seq+z')
+%                 sliceidx = 1:Nslc;
+%             elseif strcmpi(acqpar.tpatt,'seq-z')
+%                 sliceidx = fliplr( 1:Nslc );
+%             end
+%         else
+%             xtt = load(acqpar.tpatt);
+%             sliceidx = sortrows([(1:Nslc)' xtt(:)],2,'ascend');
+%         end
+% 
+%         % slice-by-slice regression, as specificed by tpattern
+%         % slice idx(i) matched to ith lag-file
+%         fvol_den = zeros(size(fvol));
+%         for i=1:Nslc
+%             i,
+%             yslc = reshape( fvol(:,:,sliceidx(i),:), [], Nt); %vox x time
+%             % regress it
+%             xreg = [ones(Nt,1), xmat(:,:,i) ];
+%             beta = yslc * xreg /( xreg'*xreg );
+%             yden = yslc - (beta(:,2:end) * xreg(:,2:end)');
+%             fvol_den(:,:,sliceidx(i),:) = reshape( yden, size(fvol(:,:,i,:)));
+%         end
+% 
+%         V.img = fvol_den;
+%         save_untouch_niiz(V,sprintf('%s/%s_ricor.nii.gz',odir,prefix));
 
     unix(sprintf('rm -rf %s',pref));
 else
