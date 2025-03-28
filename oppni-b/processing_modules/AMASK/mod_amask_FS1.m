@@ -31,27 +31,23 @@ if ~exist( sprintf('%s/anatBrainMask.nii.gz',odir) ,'file')
 
     % run freesurfer autorecon1; note that the dataset will be cropped to
     % 256x256x256 voxel resolution
+    disp('these are the FS1 commands:\n');
+    fprintf('recon-all -autorecon1 -cw256 -wsthresh %d -clean-bm -sd %s -s __opptmp_p2anat_mask -i %s\n',watershed_threshold,odir,Adataset);
+    fprintf('mri_convert --in_type mgz --out_type nii %s/mri/brainmask.mgz %s/mri/brainmask.nii\n',pref,pref);
+
     unix(sprintf('recon-all -autorecon1 -cw256 -wsthresh %d -clean-bm -sd %s -s __opptmp_p2anat_mask -i %s',watershed_threshold,odir,Adataset));
 
     % generate mask from map
     unix(sprintf('mri_convert --in_type mgz --out_type nii %s/mri/brainmask.mgz %s/mri/brainmask.nii',pref,pref));
-    unix(sprintf('3dAutomask -prefix %s/mri/anatBrainMask_unres.nii.gz %s/mri/brainmask.nii',pref,pref));
+    unix(sprintf('3dAutomask -prefix %s/mri/anatBrainMask %s/mri/brainmask.nii',pref,pref));
 
-    % resample back into original space and copy over
-    unix(sprintf('3dresample -input %s/mri/anatBrainMask_unres.nii.gz -master %s -prefix %s/mri/anatBrainMask.nii.gz',pref,Adataset,pref));
+    % resample back into original space and convert to nifti
+    unix(sprintf('3dresample -input %s/mri/anatBrainMask+orig.HEAD -master %s -prefix %s/mri/anatBrainMask_resampled',pref,Adataset,pref));
+    unix(sprintf('3dAFNItoNIFTI -prefix %s/mri/anatBrainMask %s/mri/anatBrainMask_resampled+orig.HEAD',pref,pref));
+    unix(sprintf('gzip %s/mri/anatBrainMask.nii',pref));
     unix(sprintf('cp %s/mri/anatBrainMask.nii.gz %s/anatBrainMask.nii.gz',pref,odir));
     
-    % %%## Deprecated
-    % % generate mask from map
-    % unix(sprintf('mri_convert --in_type mgz --out_type nii %s/mri/brainmask.mgz %s/mri/brainmask.nii',pref,pref));
-    % unix(sprintf('3dAutomask -prefix %s/mri/anatBrainMask %s/mri/brainmask.nii',pref,pref));
-    % 
-    % % resample back into original space and convert to nifti
-    % unix(sprintf('3dresample -input %s/mri/anatBrainMask+orig.HEAD -master %s -prefix %s/mri/anatBrainMask_resampled',pref,Adataset,pref));
-    % unix(sprintf('3dAFNItoNIFTI -prefix %s/mri/anatBrainMask %s/mri/anatBrainMask_resampled+tlrc.HEAD',pref,pref));
-    % unix(sprintf('gzip %s/mri/anatBrainMask.nii',pref));
-    % unix(sprintf('cp %s/mri/anatBrainMask.nii.gz %s/anatBrainMask.nii.gz',pref,odir));
-
+error('Deliberately Stopped Here...\n');
     
     %# ------------------------------------------------------------------
     %## MODIFIED=> Clean up the junk, keeps only anatBrainMask

@@ -433,7 +433,14 @@ fprintf('\n=========================================================\n');
         strtmp = [];
         for i=1:numel(fith)
             strtmp = [strtmp ', ', subject_list{fith(i)}];
-            axial_plot( dtmp(:,fith(i)), subMaskS, 6, 2, 1 ); colormap jet;
+            if strcmpi( param_type,'image' )
+                axial_plot( dtmp(:,fith(i)), subMaskS, 6, 2, 1 ); colormap jet;
+            elseif strcmpi( param_type,'mat2d' )
+                figure,imagesc( reshape(dtmp(:,fith(i)), matdims) ); colormap jet;
+            else
+                error('unrecognized type...')
+            end
+            title(['outlier volume: ' subject_list{fith(i)}])
         end
         fprintf('   %s\n',strtmp(3:end))
     end

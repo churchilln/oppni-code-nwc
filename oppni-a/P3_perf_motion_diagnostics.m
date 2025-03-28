@@ -17,7 +17,8 @@ end
 outpath = fullfile(outpath,'perf_proc'); % subdir should be fmri_proc
 if ~exist(outpath,'dir') error('perf proc directory does not exist!'); end
 e=dir([outpath,'*']); % dir to get absolute
-outpath = fullfile(e.folder,e.name); % convert to absolute
+if ~strcmpi( e(1).name, 'perf_proc') error('first dir should be "perf_proc"'); end
+outpath = fullfile(e(1).folder,e(1).name); % convert to absolute
 % check for missing files from previous step too
 File_Existence_Checker_perf(InputStruct_aug,outpath,1); 
 
@@ -26,7 +27,7 @@ if isempty(qc_subj_idxes)
     disp('using all subj for final qc!')
     qc_subj_idxes = 1:numel(subject_list);
 elseif ischar(qc_subj_idxes) && exist(qc_subj_idxes,'file')
-    disp('loading file list for mask construction!')
+    disp('loading file list for QC testing!')
     x = load(qc_subj_idxes);
     qc_subj_idxes = x.qc_subj_idxes; clear x;
 elseif ~isnumeric(qc_subj_idxes)
@@ -132,7 +133,7 @@ if ~exist(  fullfile(outpath,'_group_level','QC','qc.quant',['QCStruct_quant_pip
     
         for nr=1:InputStruct_ssa.N_perf
     
-            mpe = load(sprintf('%s/warp/perf%u_mpe',opath2f,nr));
+            mpe = load(sprintf('%s/warp/perf%u_mpe',opath2f,nr),'-ascii');
     
             % absolute [motion] disp
             rmsd=[];

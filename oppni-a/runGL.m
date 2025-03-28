@@ -140,7 +140,7 @@ for i=1:numel(bg)
         end
         
         fprintf(fileID, sprintf('gl.minmax(0,%d,%d)\n',round(bnd)));
-        fprintf(fileID, sprintf('gl.opacity(1,33)\n'));
+        fprintf(fileID, sprintf('gl.opacity(1,70)\n')); % <---usually 1,33
 %         fprintf(fileID, sprintf('gl.mosaic("A -30 -19 -8; 3 14 25; 35 46 57; 68 79 90")\n'));
         fprintf(fileID, sprintf('gl.mosaic("S -50 C -65 A -6; S -8 C -20 A 13; S 30 C 54 A 58")\n'));
         fprintf(fileID, sprintf('gl.savebmp(''%s'')\n',pngout));

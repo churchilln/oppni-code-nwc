@@ -45,6 +45,35 @@ if ~exist(sprintf('%s/%s_ricor.nii.gz',odir,prefix),'file')
         Nslc = size(fvol,3);
         Nt   = size(fvol,4);
 
+    % get "effective" number of slices and their timing -- allows for multiband
+        minTE = acqpar.tr_msec/Nslc; % smallest time interval between TEs, if not multiband
+        if sum(strcmpi(acqpar.tpatt,spec_case))>0
+            % effective "number of slices" for interpolation - same as actual number of slices 
+            Nslc_eff = Nslc;
+        else
+            clear TEsum NVl;
+            a = sort(acqpar.tpatt); % sorted list of delays
+            ig=1;
+            TEsum(ig) = a(1); % sum of delay values @ this interval
+            NVl(ig) = 1;     %  number of delay values @ this interval
+            for i=2:numel(a)
+                % start a new interval if gap is big enough from previous
+                if abs(a(i)-a(i-1)) > 0.95*minTE
+                    ig=ig+1;
+                    TEsum(ig) = a(i);
+                    NVl(ig) = 1;
+                % otherwise increment for averaging later
+                else
+                    TEsum(ig)=TEsum(ig)+a(i);
+                    NVl(ig)=NVl(ig)+1;
+                end
+            end
+            % get the average
+            TEav=TEsum./NVl;
+            % effective "number of slices" for interpolation
+            Nslc_eff = numel(TEav); 
+        end
+
     % run physio-proc & export regressor files
         puls = load(pulsfile);
         resp = load(respfile);
@@ -69,11 +98,11 @@ if ~exist(sprintf('%s/%s_ricor.nii.gz',odir,prefix),'file')
         physio.log_files.sampling_interval = acqpar.physamp_msec./1000; %**
         physio.log_files.relative_start_acquisition = 0;
         physio.log_files.align_scan = 'first';
-        physio.scan_timing.sqpar.Nslices = Nslc; %**
+        physio.scan_timing.sqpar.Nslices = Nslc_eff; %**
         physio.scan_timing.sqpar.TR = acqpar.tr_msec/1000; %**
         physio.scan_timing.sqpar.Ndummies = 0;
         physio.scan_timing.sqpar.Nscans = Nt + sum(acqpar.ndrop); %**
-        physio.scan_timing.sqpar.onset_slice = 1:Nslc; %**
+        physio.scan_timing.sqpar.onset_slice = 1:Nslc_eff; %**
         physio.scan_timing.sync.method = 'nominal';
         physio.preproc.cardiac.modality = 'PPU';
         physio.preproc.cardiac.initial_cpulse_select.method = 'load_from_logfile'; 
@@ -102,10 +131,11 @@ if ~exist(sprintf('%s/%s_ricor.nii.gz',odir,prefix),'file')
         physio = tapas_physio_main_create_regressors(physio);
 
         % trimmed array of slice regressors, lag-ordered
-        for i=1:Nslc
+        for i=1:Nslc_eff
             x = load(sprintf('%s/physio_slice0%02u.mat',pref,i));
             xmat(:,:,i) = x.physio.model.R( (1+acqpar.ndrop(1)) : (end-acqpar.ndrop(2)) ,:);
         end
+
         % --slice indexing by acq order
         if sum(strcmpi(acqpar.tpatt,spec_case))>0
             if     strcmpi(acqpar.tpatt,'alt+z')
@@ -130,9 +160,14 @@ if ~exist(sprintf('%s/%s_ricor.nii.gz',odir,prefix),'file')
                 sliceidx = fliplr( 1:Nslc );
             end
         else
-            % if custom, assumed ~equi-spaced and match accordingly
-            xtt = load(acqpar.tpatt);
-            sliceidx = sortrows([(1:Nslc)' xtt(:)],2,'ascend');
+            % if custom, match each slice to the correct delay
+            sliceidx = zeros( numel(acqpar.tpatt), 1 );
+            for i=1:numel(acqpar.tpatt)
+                [~,sliceidx(i)] = min( abs(acqpar.tpatt(i) - TEav) );
+            end
+            %%deprecated ... assumed all slices were captured uniquely (no MB) 
+            %xtt = load(acqpar.tpatt);
+            %sliceidx = sortrows([(1:Nslc)' xtt(:)],2,'ascend');
         end
 
         % slice-by-slice regression, as specificed by tpattern

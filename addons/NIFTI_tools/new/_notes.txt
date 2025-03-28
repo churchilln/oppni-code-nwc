@@ -1,0 +1,4 @@
+.updated tools to load and save nifti files in matlab environment,
+ with wrappers to handle gzipped files
+.NB the __deprecated__ folder contains original code used in OPPNI, originally
+ developed by Jimmy Shen. Should be used for back-checking of old processing results only!

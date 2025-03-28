@@ -6,22 +6,11 @@ function fwarp_AF1( Funcfile_set, prefix_set, odir1, odir2, base_set, Anatloc, P
 
 % basic "recommended" func warping protocol
 % > expects certain formatting in Anatloc folder!
-% > now allows you to tweak for non-default options
 
 if isempty(ParamCell) || isempty(ParamCell{1})
     anatType = 'T1';
 else
     anatType = ParamCell{1};
-end
-if numel(ParamCell)<2 || isempty(ParamCell{2})
-    a2eTrans = 'affine';
-else
-    a2eTrans = ParamCell{2};
-end
-if numel(ParamCell)<3 || isempty(ParamCell{3})
-    a2eMove = 'ginormous';
-else
-    a2eMove = ParamCell{3};
 end
 % allow for minor tweaks for non-t1 compatibility... see ~ln.47
 
@@ -71,41 +60,17 @@ for nr=1:N_func
             cd(pref);       % jump to temp directory --> because this script creates lots of local derivatives 
 
             if     strcmpi(anatType,'T1')
-                %unix(sprintf('align_epi_anat.py -anat2epi -anat %s/anat_procss.nii.gz -suffix _alj -epi %s_masked.nii.gz -epi_base 0  -epi_strip None  -anat_has_skull no  -ginormous_move -deoblique off -cost lpc+ZZ -volreg off -tshift off', Anatloc,Basefile_pref));
-                costtype = 'lpc+ZZ';
+                unix(sprintf('align_epi_anat.py -anat2epi -anat %s/anat_procss.nii.gz -suffix _alj -epi %s_masked.nii.gz -epi_base 0  -epi_strip None  -anat_has_skull no  -ginormous_move -deoblique off -cost lpc+ZZ -volreg off -tshift off', Anatloc,Basefile_pref));
             elseif strcmpi(anatType,'FLAIR') || strmpi(anatType,'T2')
-                %unix(sprintf('align_epi_anat.py -anat2epi -anat %s/anat_procss.nii.gz -suffix _alj -epi %s_masked.nii.gz -epi_base 0  -epi_strip None  -anat_has_skull no  -ginormous_move -deoblique off -cost lpa+ZZ -volreg off -tshift off', Anatloc,Basefile_pref));
-                costtype = 'lpa+ZZ';
+                unix(sprintf('align_epi_anat.py -anat2epi -anat %s/anat_procss.nii.gz -suffix _alj -epi %s_masked.nii.gz -epi_base 0  -epi_strip None  -anat_has_skull no  -ginormous_move -deoblique off -cost lpa+ZZ -volreg off -tshift off', Anatloc,Basefile_pref));
             else
                 error('unrecognized anat-type');
             end
-            %
-            if     strcmpi(a2eTrans,'affine')
-                transtype = ''; % off=affine
-            elseif strcmpi(a2eTrans,'rigid')
-                transtype = ' -rigid_body';
-            else
-                error('unrecognized anat-type');
-            end            %
-            if     strcmpi(a2eMove,'ginormous')
-                movetype = ' -ginormous_move';
-            elseif strcmpi(a2eMove,'giant')
-                movetype = ' -giant_move';
-            elseif strcmpi(a2eMove,'big')
-                movetype = ' -big_move';
-            elseif strcmpi(a2eMove,'none')
-                movetype = ''; %off=none
-            else
-                error('unrecognized anat-type');
-            end
-
-            unix(sprintf('align_epi_anat.py -anat2epi -anat %s/anat_procss.nii.gz -suffix _alj -epi %s_masked.nii.gz -epi_base 0  -epi_strip None  -anat_has_skull no -deoblique off -cost %s%s%s -volreg off -tshift off',...
-                Anatloc,Basefile_pref,costtype,movetype,transtype));    
-
+            
             % convert output to .nii format, push to correct directory
             %unix(sprintf('3dAFNItoNIFTI anat_procss_alj+orig -prefix anat_procss_alj.nii.gz')); 
             % % --> just delete alinged without making copy for now, also delete the e2a_only file (unused!) 
-            unix(sprintf('rm anat_procss_alj+orig.BRIK anat_procss_alj+orig.BRIK.gz anat_procss_alj+orig.HEAD anat_procss_alj_e2a_only_mat.aff12.1D'));
+            %unix(sprintf('rm anat_procss_alj+orig.BRIK anat_procss_alj+orig.BRIK.gz anat_procss_alj+orig.HEAD anat_procss_alj_e2a_only_mat.aff12.1D'));
             unix(sprintf('mv anat_procss_alj_mat.aff12.1D %s',odir1));
 
             cd(currPath);  % jump back to current path

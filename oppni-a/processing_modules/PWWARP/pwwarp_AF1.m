@@ -39,7 +39,7 @@ if ~exist(sprintf('%s/netaff.aff12.1D',odir1),'file')
     if     strcmpi(anatType,'T1')
         unix(sprintf('align_epi_anat.py -anat2epi -anat %s/anat_procss.nii.gz -suffix _alj -epi %s -epi_base 0  -epi_strip None  -anat_has_skull no  -ginormous_move -deoblique off -cost lpc+ZZ -volreg off -tshift off',...
             Anatloc,Basefile_masked));
-    elseif strmpi(anatType,'FLAIR') || strmpi(anatType,'T2')
+    elseif strcmpi(anatType,'FLAIR') || strmpi(anatType,'T2')
         unix(sprintf('align_epi_anat.py -anat2epi -anat %s/anat_procss.nii.gz -suffix _alj -epi %s -epi_base 0  -epi_strip None  -anat_has_skull no  -ginormous_move -deoblique off -cost lpa+ZZ -volreg off -tshift off',...
             Anatloc,Basefile_masked));
     else

@@ -1,8 +1,11 @@
-function [Xreg,stat] = roireg_OP3( functional_run, odir, roi_paths, ParamCell )
+function [Xreg,stat] = roireg_OP3( functional_run, roi_paths, ParamCell )
 %
 % .roireg_OP3:
 % .regression of physio signals from WM/CSF/high-variance areas
 % .uses previously specified masks
+%
+% *** deprecated --> new version places intermediate files in correct
+% folder
 
 
 % ParamCell = {'CSF_LV_bilat'/'CSF_LV_left+CSF_LV_right+WM_CnS','PCA'/'AVG'}
@@ -22,10 +25,6 @@ decompstr = regexp(decompstr,'-','split');
 
 Xreg=[];
 
-pref = [odir,'/__opptmp_p2func_roireg'];
-% build directory struct recursively
-unix(sprintf('mkdir -p %s',pref));
-
 str={'WM','CSF','tSD'};
 for i=1:numel(modelstr)
     match=0;
@@ -34,16 +33,16 @@ for i=1:numel(modelstr)
             match=match+1;
             tissmask = [maskpath,'/func_',str{j},'_mask_grp.nii'];
             parcmask = [parcpath,'/roimask_resam_',modelstr{i},'.nii'];
-            intrmask = sprintf('%s/intersectmsk.nii',pref);
+            intrmask = '__opptmp_roireg_intersectmsk.nii';
             
-            unix(sprintf('rm %s/*.nii*',pref));
+            unix('rm __opptmp_roireg_intersectmsk.nii __opptmp_roireg_volblur.nii');
             V1=load_untouch_niiz(tissmask);
             V2=load_untouch_niiz(parcmask);
             V1.img = double(V1.img).*double(V2.img);
             save_untouch_niiz(V1,intrmask); clear V1 V2;
 
-            unix(sprintf('3dBlurInMask -prefix %s/volblur.nii -fwhm 6 -input %s -mask %s',pref,functional_run,intrmask));
-            V=load_untouch_niiz(sprintf('%s/volblur.nii',pref));
+            unix(sprintf('3dBlurInMask -prefix __opptmp_roireg_volblur.nii -fwhm 6 -input %s -mask %s',functional_run,intrmask));
+            V=load_untouch_niiz('__opptmp_roireg_volblur.nii');
             M=load_untouch_niiz(intrmask);
             volmat = nifti_to_mat(V,M);
             if strcmpi(decompstr{1},'AVG')
@@ -58,7 +57,9 @@ for i=1:numel(modelstr)
             else
                 error('unrecognized roireg decomposition style')
             end
-            Xreg = [Xreg, zscore(v)];            
+            Xreg = [Xreg, zscore(v)];
+            
+            unix('rm __opptmp_roireg_intersectmsk.nii __opptmp_roireg_volblur.nii');
         end
     end
     if match==0
@@ -67,8 +68,6 @@ for i=1:numel(modelstr)
         error('ROIREG failed - somehow matched to multiple tissue types?')
     end
 end
-
-unix(sprintf('rm -rf %s',pref));
 
 rr = rank(Xreg);
 

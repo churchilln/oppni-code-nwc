@@ -16,6 +16,7 @@ if ~exist(sprintf('%s/%s_tshift.nii.gz',odir,prefix),'file')
         unix(sprintf('3dTshift -prefix %s/%s_tshift.nii.gz -tpattern %s %s',odir,prefix,tpatt,Funcfile));
     else
         disp('custom arg');
+        % slice offsets in msec, from bottom to top
         unix(sprintf('3dTshift -prefix %s/%s_tshift.nii.gz -tpattern @%s %s',odir,prefix,tpatt,Funcfile));
     end
 else

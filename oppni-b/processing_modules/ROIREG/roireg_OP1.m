@@ -1,4 +1,4 @@
-function [Xreg,stat] = roireg_OP1( functional_run, roi_paths, ParamCell )
+function [Xreg,stat] = roireg_OP1( functional_run, odir, roi_paths, ParamCell )
 %
 % ParamCell = {'WM'/'WM+CSF+tSD'}
 %
@@ -15,6 +15,10 @@ modelstr  = regexp(modelstr,'+','split');
 
 Xreg=[];
 
+pref = [odir,'/__opptmp_p2func_roireg'];
+% build directory struct recursively
+unix(sprintf('mkdir -p %s',pref));
+
 str={'WM','CSF','tSD'};
 for i=1:numel(modelstr)
     match=0;
@@ -23,16 +27,13 @@ for i=1:numel(modelstr)
             match=match+1;
             tissmask = [maskpath,'/func_',str{j},'_mask_grp.nii'];
 
-            unix('rm __opptmp_roireg_volblur.nii');
-
-            unix(sprintf('3dBlurInMask -prefix __opptmp_roireg_volblur.nii -fwhm 6 -input %s -mask %s',functional_run,tissmask));
-            V=load_untouch_niiz('__opptmp_roireg_volblur.nii');
+            unix(sprintf('rm %s/*.nii*',pref));
+            unix(sprintf('3dBlurInMask -prefix %s/volblur.nii -fwhm 6 -input %s -mask %s',pref,functional_run,tissmask));
+            V=load_untouch_niiz(sprintf('%s/volblur.nii',pref));
             M=load_untouch_niiz(tissmask);
             volmat = nifti_to_mat(V,M);
             v = mean(zscore(volmat'),2);
             Xreg = [Xreg, zscore(v)];
-            
-            unix('rm __opptmp_roireg_volblur.nii');
         end
     end
     if match==0
@@ -41,6 +42,8 @@ for i=1:numel(modelstr)
         error('ROIREG failed - somehow matched to multiple tissue types?')
     end
 end
+
+unix(sprintf('rm -rf %s',pref));
 
 rr = rank(Xreg);
 [u,l,~]=svd(Xreg);

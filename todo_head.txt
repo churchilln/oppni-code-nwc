@@ -9,8 +9,6 @@ TO-DO HEAD FOLDER
 ---------------------------------------------------------------------------
 (oppni-b)
 
-> integrate physio data for ricor
-
 > add an alignment QC protocol
     * store func1_warped_tav_noal in postwarp --> for qc of e2a
     * store func1_warped_tsd / func1_warped_tsd_nomc --> for qc of motcor
@@ -32,6 +30,10 @@ TO-DO HEAD FOLDER
 > pipeline "split-half" option for handling regression processing etc.
 
 > measure amt. of affine motion / nonlinear displacement to check for abnormal cases
+
+> field map integration
+
+> multi-echo functionality
 
 ---------------------------------------------------------------------------
 (oppni-d)

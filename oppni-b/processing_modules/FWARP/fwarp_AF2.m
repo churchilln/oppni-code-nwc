@@ -1,12 +1,11 @@
-function fwarp_AF1( Funcfile_set, prefix_set, odir1, odir2, base_set, Anatloc, ParamCell )
+function fwarp_AF2( Funcfile_set, prefix_set, odir1, odir2, base_set, Anatloc, ParamCell )
 %
-% .fwarp_AF1:
+% .fwarp_AF2:
 % .functional warping using AFNI utilities
 % .adapted from afni_proc.py script, using outputs from @SSwarper
 
-% basic "recommended" func warping protocol
+% an expanded "optimizer" built in for initial steps
 % > expects certain formatting in Anatloc folder!
-% > now allows you to tweak for non-default options
 
 if isempty(ParamCell) || isempty(ParamCell{1})
     anatType = 'T1';
@@ -14,29 +13,31 @@ else
     anatType = ParamCell{1};
 end
 if numel(ParamCell)<2 || isempty(ParamCell{2})
-    a2eTrans = 'affine';
+    searchSet = 'trans+move';
 else
-    a2eTrans = ParamCell{2};
+    searchSet = ParamCell{2};
 end
-if numel(ParamCell)<3 || isempty(ParamCell{3})
-    a2eMove = 'ginormous';
-else
-    a2eMove = ParamCell{3};
+
+%% setting param list
+
+if strcmpi(searchSet,'trans+move') || strcmpi(searchSet,'move+trans')
+
+    param_list = {'',               ' -rigid_body',...
+                  ' -big_move',      ' -big_move -rigid_body',...
+                  ' -giant_move',    ' -giant_move -rigid_body',...
+                  ' -ginormous_move',' -ginormous_move -rigid_body'};
+
+elseif strcmpi(searchSet,'trans')
+
+    param_list = {'', ' -rigid_body'};
+
+elseif strcmpi(searchSet,'move')
+
+    param_list = {'', ' -big_move', ' -giant_move', ' -ginormous_move'};
+
 end
-% allow for minor tweaks for non-t1 compatibility... see ~ln.47
 
-% odir => sprintf('%s/warp',opath2f)
-% prefix_set => sprintf('func%u',nr) x N_func
-% Funcfile_set => sprintf('%s/prewarp/func%u_2std.nii',opath2f,nr)  x N_func
-% base_set => motref_0rel x N_func
-% Anatloc => sprintf('%s',opath2a);
-% AnatfileSS => sprintf('%s/anat_procss.nii',opath2a)
-% Anat_Afffile => sprintf('%s/anatQQ.aff12.1D',opath2a)
-% Anat_Warpfile => sprintf('%s/anatQQ_WARP.nii',opath2a)
-% AnatfileWW => sprintf('%s/anat_warped.nii',opath2a)
-
-% NB: when specifying alignment matrix outputs, make sure suffix is aff12.1D
-%     throughout, otherwise cat_matvec will only do 1 line!
+%% to alignment...
 
 % prefix for temp files
 pref = [odir1,'/__opptmp_p2func_warp'];
@@ -79,34 +80,30 @@ for nr=1:N_func
             else
                 error('unrecognized anat-type');
             end
-            %
-            if     strcmpi(a2eTrans,'affine')
-                transtype = ''; % off=affine
-            elseif strcmpi(a2eTrans,'rigid')
-                transtype = ' -rigid_body';
-            else
-                error('unrecognized anat-type');
-            end            %
-            if     strcmpi(a2eMove,'ginormous')
-                movetype = ' -ginormous_move';
-            elseif strcmpi(a2eMove,'giant')
-                movetype = ' -giant_move';
-            elseif strcmpi(a2eMove,'big')
-                movetype = ' -big_move';
-            elseif strcmpi(a2eMove,'none')
-                movetype = ''; %off=none
-            else
-                error('unrecognized anat-type');
+
+            % load motref
+            A=load_untouch_niiz(sprintf('%s_masked.nii.gz',Basefile_pref));
+            a_img=double(A.img>0);
+
+            for im=1:numel(param_list)
+                unix(sprintf('mkdir %s/meth%u',pref,im)); % create subdirectory
+                unix(sprintf('align_epi_anat.py -anat2epi -anat %s/anat_procss.nii.gz -suffix _alj -epi %s_masked.nii.gz -epi_base 0  -epi_strip None  -anat_has_skull no -deoblique off -cost %s%s -volreg off -tshift off',...
+                    Anatloc,Basefile_pref,costtype,param_list{im}));             
+                unix(sprintf('rm anat_procss_alj+orig.BRIK anat_procss_alj+orig.BRIK.gz anat_procss_alj+orig.HEAD anat_procss_alj_e2a_only_mat.aff12.1D'));
+                unix(sprintf('mv anat_procss_alj_mat.aff12.1D %s/meth%u',pref,im));
+                unix(sprintf('3dAllineate -cubic -prefix %s/meth%u/anat_procss_loResAlign.nii.gz -1Dmatrix_apply %s/meth%u/anat_procss_alj_mat.aff12.1D -base %s_masked.nii.gz -input %s/anat_procss.nii.gz',...
+                    pref,im, pref,im, Basefile_pref, Anatloc ));
+                B=load_untouch_niiz(sprintf('%s/meth%u/anat_procss_loResAlign.nii.gz', pref,im ));
+                b_img=double(B.img>0);
+                % jaccard index viz motref
+                jacc(im,1) = sum( a_img(:).*b_img(:) )./ sum( (a_img(:)+b_img(:))>0 );
             end
-
-            unix(sprintf('align_epi_anat.py -anat2epi -anat %s/anat_procss.nii.gz -suffix _alj -epi %s_masked.nii.gz -epi_base 0  -epi_strip None  -anat_has_skull no -deoblique off -cost %s%s%s -volreg off -tshift off',...
-                Anatloc,Basefile_pref,costtype,movetype,transtype));    
-
-            % convert output to .nii format, push to correct directory
-            %unix(sprintf('3dAFNItoNIFTI anat_procss_alj+orig -prefix anat_procss_alj.nii.gz')); 
-            % % --> just delete alinged without making copy for now, also delete the e2a_only file (unused!) 
-            unix(sprintf('rm anat_procss_alj+orig.BRIK anat_procss_alj+orig.BRIK.gz anat_procss_alj+orig.HEAD anat_procss_alj_e2a_only_mat.aff12.1D'));
-            unix(sprintf('mv anat_procss_alj_mat.aff12.1D %s',odir1));
+            [optval,optix] = max(jacc);
+            writematrix(jacc, sprintf('%s/jacc_vals.txt',odir1));
+            fprintf('\noptimal EPI-T1 approach is method %u - overlap: %.03f\n\n',optix,optval);
+            % move to main directory!
+            unix(sprintf('mv %s/meth%u/anat_procss_alj_mat.aff12.1D %s',pref,optix,odir1));
+            unix(sprintf('mv %s/meth* %s',pref,odir1)); % for now, keep different method outputs
 
             cd(currPath);  % jump back to current path
         end

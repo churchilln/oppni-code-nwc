@@ -1,4 +1,4 @@
-function [subject_list] = P_qc_diffusion( inputfile, outpath )
+function [subject_list] = P2_qc_diffusion( inputfile, outpath, qc_subj_idxes )
 %
 % . this script: 
 % . (a) checks whether input/pipelin/param/template/task/seed files can be read 
@@ -12,9 +12,17 @@ if CODE_PATH(end)~='/'
     CODE_PATH = [CODE_PATH '/'];
 end
 
+if nargin<3
+    qc_subj_idxes=[];
+end
+
 %% ========= PHASE ZERO GO ========= %%
 
 outpath = fullfile(outpath,'diff_proc'); % subdir should be diff_proc
+if ~exist(outpath,'dir') error('diff proc directory does not exist!'); end
+e=dir([outpath,'*']); % dir to get absolute
+if ~strcmpi( e(1).name, 'diff_proc') error('first dir should be "diff_proc"'); end
+outpath = fullfile(e(1).folder,e(1).name); % convert to absolute
 
 % basic file checks ... construct input/pipeline/param structure -> should throw error if inputs non-valid
 InputStruct = Read_Input_File_diff(inputfile);
@@ -29,15 +37,56 @@ end
 
 disp('Step-0 Complete!');
 
+% list of subjects for constructing group masks
+if isempty(qc_subj_idxes)
+    disp('using all subj for final qc!')
+    qc_subj_idxes = 1:numel(subject_list);
+elseif ischar(qc_subj_idxes) && exist(qc_subj_idxes,'file')
+    disp('loading file list for QC testing!')
+    x = load(qc_subj_idxes);
+    qc_subj_idxes = x.qc_subj_idxes; clear x;
+elseif ~isnumeric(qc_subj_idxes)
+    error('unrecognized qc id format?')
+else
+    disp('using numeric list of subj values for final qc construction!')
+end
+
+mkdir_r([outpath,'/_group_level/QC/qc.quant']);
+% store information about masking sublist...
+subject_list_forqc = subject_list(qc_subj_idxes);
+if exist([outpath,'/_group_level/QC/qc.quant/pipe_BASE_qc_subj_idxes.mat'],'file')
+    x=load([outpath,'/_group_level/QC/qc.quant/pipe_BASE_qc_subj_idxes.mat']);
+    if     ~isempty( setdiff(subject_list_forqc,x.subject_list_forqc) ) 
+        error('custom subject list for qcing :: subjects in new list not present in old! delete group level folders if you want to update!')
+    elseif ~isempty( setdiff(x.subject_list_forqc,subject_list_forqc) )
+        error('custom subject list for qcing :: subjects not in new list that are present in old! delete group level folders if you want to update!')
+    else
+        disp('custom subject list for qcing :: list is consistent with old one ... continuing without modification!')
+    end
+else    
+    save([outpath,'/_group_level/QC/qc.quant/pipe_BASE_qc_subj_idxes.mat'],'qc_subj_idxes','subject_list_forqc');
+end
+
 if ~exist(  fullfile(outpath,'_group_level','QC','qc.quant',['QCStruct_quant_pipe_BASE.mat'])  ,'file')
     
-    for ns=1:numel(subject_list)
+    for ni=1:numel(qc_subj_idxes)
+
         nr=1;
     
-        fprintf('=== PHASE 1, subject %u/%u ===\n',ns,numel(subject_list)),
+        fprintf('=== PHASE 1, subject %u/%u ===\n',ni,numel(qc_subj_idxes)),
     
         % *** NO SUBJECT SPECIFIC STRUCT FILE YET ***
-        InputStruct_ssa = InputStruct(ns); %% single subject
+        % run thru inputstruct and find element matching ni'th ID
+        nix=[];
+        for ij=1:numel(InputStruct)
+            if strcmpi(InputStruct(ij).PREFIX,subject_list_forqc{ni})
+                nix = [nix ij];
+            end
+        end
+        if numel(nix)==0 || numel(nix)>2
+            error('something went wrong with your indexing')
+        end
+        InputStruct_ssa = InputStruct(nix); %% single subject
     
         opath0 = fullfile(outpath,InputStruct_ssa.PREFIX,'rawdata');
         opath1 = fullfile(outpath,InputStruct_ssa.PREFIX,'diff_proc_p1/pre_eddy');
@@ -46,10 +95,10 @@ if ~exist(  fullfile(outpath,'_group_level','QC','qc.quant',['QCStruct_quant_pip
         opath4 = fullfile(outpath,InputStruct_ssa.PREFIX,'diff_proc_p2/noddi');
         opath5 = fullfile(outpath,InputStruct_ssa.PREFIX,'diff_proc_p2/dki');
     
-        QCStruct_quant(ns).PREFIX = InputStruct_ssa.PREFIX;
-        QCStruct_quant(ns).N_anat = InputStruct_ssa.N_anat;
-        QCStruct_quant(ns).N_diff_fwd = InputStruct_ssa.N_diff_fwd;
-        QCStruct_quant(ns).N_diff_rev = InputStruct_ssa.N_diff_rev;
+        QCStruct_quant(ni).PREFIX = InputStruct_ssa.PREFIX;
+        QCStruct_quant(ni).N_anat = InputStruct_ssa.N_anat;
+        QCStruct_quant(ni).N_diff_fwd = InputStruct_ssa.N_diff_fwd;
+        QCStruct_quant(ni).N_diff_rev = InputStruct_ssa.N_diff_rev;
     
         mpe = load(sprintf('%s/eddy_unwarp.eddy_parameters',opath2));
         mpe = [mpe(:,1:3) mpe(:,4:6) * (180/pi)];
@@ -59,29 +108,33 @@ if ~exist(  fullfile(outpath,'_group_level','QC','qc.quant',['QCStruct_quant_pip
         for i=1:size(mpe,1)-1
             rmsd = [rmsd; mean(  (mpe(i+1:end,:)-mpe(i,:)).^2, 2  ) ];
         end
-        QCStruct_quant(ns).drun(nr).mot_avg_tot = mean(rmsd);
-        QCStruct_quant(ns).drun(nr).mot_max_tot = max(rmsd);
+        QCStruct_quant(ni).drun(nr).mot_avg_tot = mean(rmsd);
+        QCStruct_quant(ni).drun(nr).mot_max_tot = max(rmsd);
         % relative [motion] framewise disp
         rmsd = mean( (mpe(2:end,:)-mpe(1:end-1,:)).^2,2);
-        QCStruct_quant(ns).drun(nr).mot_avg_rel = mean(rmsd);
-        QCStruct_quant(ns).drun(nr).mot_max_rel = max(rmsd);
+        QCStruct_quant(ni).drun(nr).mot_avg_rel = mean(rmsd);
+        QCStruct_quant(ni).drun(nr).mot_max_rel = max(rmsd);
     
     
         M=load_untouch_niiz(sprintf('%s/refavg_brain_mask.nii.gz',opath1));
         V=load_untouch_niiz(sprintf('%s/eddy_unwarp.eddy_outlier_free_data.nii.gz',opath2));
+        Xbval  = load(sprintf('%s/diff_fwd_cat.bval',opath0));
         volmat = nifti_to_mat(V,M);
-    
+        % --> OLD VERSION USED TO LUMP ALL VOLUMES INTO RMS ESTIMATE, NOW SPLIT I 
+        % --> FOR NOW, OUTLIER CHECKS IMPLICITLY COMBINE ALL DIFF WEIGHTINGS, MAY NEED TO TWEAK LATER! 
+        volmat = volmat(:,Xbval>0);
+
         % dvars [motion] disp
         rmsd=[];
         for i=1:size(volmat,2)-1
             rmsd = [rmsd; mean(  (volmat(:,i+1:end)-volmat(:,i)).^2, 1  )' ];
         end
-        QCStruct_quant(ns).drun(nr).dvr_avg_tot = mean(rmsd);
-        QCStruct_quant(ns).drun(nr).dvr_max_tot = max(rmsd);
+        QCStruct_quant(ni).drun(nr).dvr_avg_tot = mean(rmsd);
+        QCStruct_quant(ni).drun(nr).dvr_max_tot = max(rmsd);
         % dvars [motion] framewise disp
         rmsd = mean( (volmat(:,2:end)-volmat(:,1:end-1)).^2,1);
-        QCStruct_quant(ns).drun(nr).dvr_avg_rel = mean(rmsd);
-        QCStruct_quant(ns).drun(nr).dvr_max_rel = max(rmsd);
+        QCStruct_quant(ni).drun(nr).dvr_avg_rel = mean(rmsd);
+        QCStruct_quant(ni).drun(nr).dvr_max_rel = max(rmsd);
     
     %     % piecewise??
     %     load(sprintf('%s/nvol_fwd.mat',opath0));
@@ -121,11 +174,11 @@ ytst = {'gam',        'gam',        'gam',        'gam',        'gam',        'g
 yid  = {'ID'};
 % functional first
 kq=0; clear catid catmat;
-for ns=1:numel(QCStruct_quant)
+for ni=1:numel(QCStruct_quant)
     for nr=1
         kq=kq+1;
-        xtmp   = QCStruct_quant(ns).drun(nr);
-        catid{kq} = strcat(QCStruct_quant(ns).PREFIX,'_run(',num2str(nr),')');
+        xtmp   = QCStruct_quant(ni).drun(nr);
+        catid{kq} = strcat(QCStruct_quant(ni).PREFIX,'_run(',num2str(nr),')');
         cattmp = [];
         for iu=1:numel(ytmp)
             cattmp = [cattmp xtmp.(ytmp{iu})];
@@ -137,7 +190,7 @@ catid = pad(catid); yid{1}=pad('ID',numel(catid{1})); % pad out the IDs
 filo = fopen( fullfile(outpath,'_group_level','QC','qc.quant',['table_func_stats_pipe_BASE.txt']),'w');
 fprintf(filo,'%s | %15s %15s %15s %15s %15s %15s %15s %15s\n',yid{1},ytmp{:});
 for i=1:size(catmat,1)
-    fprintf(filo,'%s | %15.2f %15.2f %15.2f %15.2f %15.2f %15.2f %15.2f %15.2ff\n',catid{i},catmat(i,:));
+    fprintf(filo,'%s | %15.2f %15.2f %15.2f %15.2f %15.2f %15.2f %15.2f %15.2f\n',catid{i},catmat(i,:));
 end
 fclose(filo);
 
@@ -153,7 +206,7 @@ legend(legcell);
 
 ix = find( sum(abar,2)>0 );
 
-fprintf('\n\nTotal of %u anatomical runs with outlier values (FDR=0.05):\n',numel(ix)),
+fprintf('\n\nTotal of %u diffusion runs with outlier values (FDR=0.05):\n',numel(ix)),
 if ~isempty(ix)
     for i=1:numel(ix)
         stro=[];

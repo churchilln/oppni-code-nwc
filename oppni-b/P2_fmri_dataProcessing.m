@@ -1109,7 +1109,7 @@ for ns=subj_list_for_proc % step through func-proc (block-2)
                     pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
                     cd(currPath);                               % jump back to current path
                     % execute step:
-                    [xroi,statr] = pfun( sprintf('%s/postwarp/func%u_warped.nii.gz',opath2f,nr), {maskpath,parcpath}, PipeStruct_aug.(Step)(2:end) );  
+                    [xroi,statr] = pfun( sprintf('%s/postwarp/func%u_warped.nii.gz',opath2f,nr), opath4f, {maskpath,parcpath}, PipeStruct_aug.(Step)(2:end) );  
                 end
                 
                 % >>> Respiratory volume / heart rate variability corrections
@@ -1122,14 +1122,14 @@ for ns=subj_list_for_proc % step through func-proc (block-2)
                     acqpar.tpatt   = []; % no tpattern atm, info is destroyed
                     acqpar.ndrop   = [InputStruct_ssa.frun(nr).DROP_first InputStruct_ssa.frun(nr).DROP_last];
                     acqpar.tr_msec = InputStruct_ssa.TR_MSEC;
-                    acqpar.physamp_msec = InputStruct_ssa.PHYSAMP_MSEC;
+                    acqpar.physamp_msec = InputStruct_ssa.PHYSAMP_PR_MSEC;
                     % get function handle for analysis model of interest
                     currPath=pwd;                               % get current path
                     cd(pipeline_struct.(Step).filepath);               % jump to module directory
                     pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
                     cd(currPath);                               % jump back to current path
                     % execute step:
-                    [xrvh,statv] = pfun( sprintf('%s/prewarp/func%u_despike.nii.gz',opath2f,nr), sprintf('%s/physio%u.puls.1D',opath0,nr), sprintf('%s/physio%u.resp.1D',opath0,nr), acqpar, PipeStruct_aug.(Step)(2:end) );  
+                    [xrvh,statv] = pfun( sprintf('%s/prewarp/func%u_despike.nii.gz',opath2f,nr), opath4f, sprintf('%s/physio%u.puls.1D',opath0,nr), sprintf('%s/physio%u.resp.1D',opath0,nr), acqpar, PipeStruct_aug.(Step)(2:end) );  
                 end
 
                 % >>> Regression of Task Design

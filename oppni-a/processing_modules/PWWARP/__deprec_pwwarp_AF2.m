@@ -1,4 +1,9 @@
 function pwwarp_AF2( Funcfile_set, prefix_set, odir1, odir2, Basefile_masked, Anatloc, ParamCell )
+%
+% .now-deprecated AFNI-based functional warping, used for non-T1 anatomic
+%  data. pwwarp_AF1 with special flag is now preferred, this is only kept
+%  for back-checking purposes
+
 
 % func warping same as AF1, but v minor tweaks for non-t1
 % compatibility... see ln.25

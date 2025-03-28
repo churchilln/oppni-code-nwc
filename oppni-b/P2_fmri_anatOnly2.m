@@ -232,52 +232,52 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
         % execute step:
         pfun( sprintf('%s/anat%u_2std.nii.gz', opath1a,nr), ParamStruct_aug.TEMPLATE_loc, opath2a, PipeStruct_aug.(Step)(2:end) );  
     end
-    % 
-    % % >>> Spatial Warping
-    % Step = 'AWARP';
-    % if strcmpi(PipeStruct_aug.(Step){1},'OFF')
-    %     error('cannot turn this step off!');
-    % else
-    %     % get function handle for analysis model of interest
-    %     currPath=pwd;                               % get current path
-    %     cd(pipeline_struct.(Step).filepath);               % jump to module directory
-    %     pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
-    %     cd(currPath);                               % jump back to current path
-    %     % execute step:
-    %     pfun( sprintf('%s/anat%u_2std.nii.gz', opath1a,nr), sprintf('%s/anatBrainMask.nii.gz',opath2a), ParamStruct_aug.TEMPLATE_loc, opath2a, PipeStruct_aug.(Step)(2:end) );  
-    % end
-    % 
-    % % >>> Anatomic segmentation
-    % Step = 'ASEG';
-    % if strcmpi(PipeStruct_aug.(Step){1},'OFF')
-    %     error('cannot turn this step off!');
-    % else
-    %     % get function handle for analysis model of interest
-    %     currPath=pwd;                               % get current path
-    %     cd(pipeline_struct.(Step).filepath);               % jump to module directory
-    %     pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
-    %     cd(currPath);                               % jump back to current path
-    %     % execute step:
-    %     pfun( sprintf('%s/anat_procss.nii.gz',opath2a), sprintf('%s/anatBrainMask.nii.gz',opath2a), opath3a, PipeStruct_aug.(Step)(2:end) );  
-    % end
-    % 
-    % % extra step: warping the anatomical segmentations into template space
-    % tisslist = {'CSF','GM','WM'}; % list tissues in increasing order of T1 intensity
-    % for i=1:3
-    %     if ~exist(sprintf('%s/anat_seg_%s_warped.nii.gz',opath3a,tisslist{i}),'file')
-    %         if contains(PipeStruct_aug.AWARP{1},'AF') %afni-styles warp
-    %             unix(sprintf('3dNwarpApply -master %s/anat_warped.nii.gz -source %s/anat_seg_%s.nii.gz -nwarp "%s/anatQQ_WARP.nii.gz %s/anatQQ.aff12.1D" -prefix %s/anat_seg_%s_warped.nii.gz',...
-    %                 opath2a,opath3a,tisslist{i},opath2a,opath2a,opath3a,tisslist{i}));
-    %         elseif contains(PipeStruct_aug.AWARP{1},'AN') %ants-styles warp
-    %             unix(sprintf('antsApplyTransforms -d 3 -i %s/anat_seg_%s.nii.gz -r %s/anat_warped.nii.gz -n linear -t %s/anatQQ_WARP.nii.gz -t %s/anatQQ_GenericAffine.mat -o %s/anat_seg_%s_warped.nii.gz',...
-    %                 opath3a,tisslist{i}, opath2a, opath2a,opath2a, opath3a,tisslist{i}));
-    %         else
-    %             error('unrecognized warping style!')
-    %         end
-    %     else
-    %         disp('skipping tissue seg warping...')
-    %     end
-    % end
+
+    % >>> Spatial Warping
+    Step = 'AWARP';
+    if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+        error('cannot turn this step off!');
+    else
+        % get function handle for analysis model of interest
+        currPath=pwd;                               % get current path
+        cd(pipeline_struct.(Step).filepath);               % jump to module directory
+        pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+        cd(currPath);                               % jump back to current path
+        % execute step:
+        pfun( sprintf('%s/anat%u_2std.nii.gz', opath1a,nr), sprintf('%s/anatBrainMask.nii.gz',opath2a), ParamStruct_aug.TEMPLATE_loc, opath2a, PipeStruct_aug.(Step)(2:end) );  
+    end
+
+    % >>> Anatomic segmentation
+    Step = 'ASEG';
+    if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+        error('cannot turn this step off!');
+    else
+        % get function handle for analysis model of interest
+        currPath=pwd;                               % get current path
+        cd(pipeline_struct.(Step).filepath);               % jump to module directory
+        pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+        cd(currPath);                               % jump back to current path
+        % execute step:
+        pfun( sprintf('%s/anat_procss.nii.gz',opath2a), sprintf('%s/anatBrainMask.nii.gz',opath2a), opath3a, PipeStruct_aug.(Step)(2:end) );  
+    end
+
+    % extra step: warping the anatomical segmentations into template space
+    tisslist = {'CSF','GM','WM'}; % list tissues in increasing order of T1 intensity
+    for i=1:3
+        if ~exist(sprintf('%s/anat_seg_%s_warped.nii.gz',opath3a,tisslist{i}),'file')
+            if contains(PipeStruct_aug.AWARP{1},'AF') %afni-styles warp
+                unix(sprintf('3dNwarpApply -master %s/anat_warped.nii.gz -source %s/anat_seg_%s.nii.gz -nwarp "%s/anatQQ_WARP.nii.gz %s/anatQQ.aff12.1D" -prefix %s/anat_seg_%s_warped.nii.gz',...
+                    opath2a,opath3a,tisslist{i},opath2a,opath2a,opath3a,tisslist{i}));
+            elseif contains(PipeStruct_aug.AWARP{1},'AN') %ants-styles warp
+                unix(sprintf('antsApplyTransforms -d 3 -i %s/anat_seg_%s.nii.gz -r %s/anat_warped.nii.gz -n linear -t %s/anatQQ_WARP.nii.gz -t %s/anatQQ_GenericAffine.mat -o %s/anat_seg_%s_warped.nii.gz',...
+                    opath3a,tisslist{i}, opath2a, opath2a,opath2a, opath3a,tisslist{i}));
+            else
+                error('unrecognized warping style!')
+            end
+        else
+            disp('skipping tissue seg warping...')
+        end
+    end
 
     % % fprintf('\n===> subj %s (%u/%u), physio. processing...\n',subject_list{ns},ns,numel(subject_list)),
     % % %% =======================================================================

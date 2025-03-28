@@ -133,6 +133,8 @@ end
 % some sanity checks
 if par.ST_MSEC<10 && par.ST_MSEC~=0
     error('slice timing %.02f msec seems unreasonably small. Are you sure this is right?',par.ST_MSEC)
+elseif par.ST_MSEC > par.TR_MSEC/2
+    error('slice timing %.02f msec seems unreasonably big compared to TR. Are you sure this is right?',par.ST_MSEC)
 end
 
 % Slice timing array
@@ -151,6 +153,8 @@ elseif contains(lab_method,'3D')
     else
         error('3D ASL doesnt have slice offsets');
     end
+else
+    error('acquisition method unspecified: 2D or 3D?')
 end
 
 %% COMPUTING PERFUSION WEIGHTED IMAGES + BOLD series

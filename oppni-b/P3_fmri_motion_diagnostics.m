@@ -27,7 +27,7 @@ if isempty(qc_subj_idxes)
     disp('using all subj for final qc!')
     qc_subj_idxes = 1:numel(subject_list);
 elseif ischar(qc_subj_idxes) && exist(qc_subj_idxes,'file')
-    disp('loading file list for mask construction!')
+    disp('loading file list for QC testing!')
     x = load(qc_subj_idxes);
     qc_subj_idxes = x.qc_subj_idxes; clear x;
 elseif ~isnumeric(qc_subj_idxes)
@@ -386,3 +386,5 @@ if ~isempty(ix)
         fprintf('\t%u. %s with: %s\n',i,catid{ix(i)},stro(1:end-1));
     end
 end
+
+disp('done!');
