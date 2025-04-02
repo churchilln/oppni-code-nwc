@@ -1356,9 +1356,6 @@ for ns=subj_list_for_proc % step through func-proc (block-2)
         out_analysis.submask = maskSsub;
         %
         save([opath5f,'/out_analysis.mat'],'out_analysis');
-        
-        %/fortemplate
-        VS2=load_untouch_niiz([opath4f,'/func',num2str(nr),'_fullproc.nii.gz'])
 
         fi = fieldnames( out_analysis.image );
 
@@ -1369,18 +1366,15 @@ for ns=subj_list_for_proc % step through func-proc (block-2)
                 tmp(tmp>0)= out_analysis.image.(fi{i})(:,p);
                 TMPVOL(:,:,:,p) = tmp;
             end
-
-            %%%---deprecated---%%%
-            % nii=MB;
-            % nii.img = TMPVOL;
-            % nii.hdr.dime.datatype = 16;
-            % nii.hdr.dime.bixpix = 32;
-            % nii.hdr.hist = MB.hdr.hist;
-            % nii.hdr.dime.dim(5) = size(out_analysis.image.(fi{i}),2);
-
-            nii=VS2;
-            nii.img=TMPVOL;
+            nii=MB;
+            nii.img = TMPVOL;
+            nii.hdr.dime.datatype = 16;
+            nii.hdr.dime.bixpix = 32;
+            nii.hdr.hist = MB.hdr.hist;
             nii.hdr.dime.dim(5) = size(out_analysis.image.(fi{i}),2);
+            %--
+            nii.info.Datatype = 'single';
+            nii.info.BitsPerPixel = 32;
             nii.info.ImageSize(4) = size(out_analysis.image.(fi{i}),2);
             %--
             save_untouch_niiz(nii,[opath5f,'/',fi{i},'.nii.gz']); 
