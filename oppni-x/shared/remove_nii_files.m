@@ -25,15 +25,21 @@ Vo=Vi;
 Vo.img = TMPVOL;
 Vo.hdr.hist = Vi.hdr.hist;
 Vo.hdr.dime.dim(5) = size(TMPVOL,4);
+Vo.info.ImageSize(4) = size(TMPVOL,4);
 
 if strip_hd==0
     save_untouch_niiz(Vo,outfile);
 else
-    save_untouch_niiz(Vo,outfile_unfix);
-    unix(sprintf('nifti_tool -rm_ext ALL -prefix %s -infiles %s',outfile,outfile_unfix));
-    if exist(outfile,'file')
-        unix(sprintf('rm %s',outfile_unfix))
-    else
-        error('failed to create new file w stripped header')
-    end
+    % >> deprec, requires for compatibility with old nifti tools?
+    %
+    % save_untouch_niiz(Vo,outfile_unfix);
+    % unix(sprintf('nifti_tool -rm_ext ALL -prefix %s -infiles %s',outfile,outfile_unfix));
+    % if exist(outfile,'file')
+    %     unix(sprintf('rm %s',outfile_unfix))
+    % else
+    %     error('failed to create new file w stripped header')
+    % end
+
+    % saving it without messing with header - should work in new nifti tool set 
+    save_untouch_niiz(Vo,outfile);
 end

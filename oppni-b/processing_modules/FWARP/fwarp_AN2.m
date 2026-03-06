@@ -1,22 +1,11 @@
 function fwarp_AN1( Funcfile_set, prefix_set, odir1, odir2, base_set, Anatloc, ParamCell )
 %
-% .awarp_AN1:
+% .awarp_AN2:
 % .anatomical warping using ANTs utilities
-% .kludged together from some existing sample scripts!
+% .kludged together from some existing sample scripts! --> with a nonlinear option!
 
 % error('need to implement resampling of warped anatomic reference!!')
 % error('This option currently disabled -- still needs detailed QC!')
-
-if isempty(ParamCell) || isempty(ParamCell{1})
-    anatType = 'T1';
-else
-    anatType = ParamCell{1};
-end
-if numel(ParamCell)<2 || isempty(ParamCell{2})
-    a2eTrans = 'affine';
-else
-    a2eTrans = ParamCell{2};
-end
 
 %%
 
@@ -120,8 +109,14 @@ for nr=1:N_func
             '--metric MI[%s,%s,1,32] ',...
             '--convergence [500x500x250x50,1e-6,10] ',...
             '--shrink-factors 6x4x2x1 ',...
-            '--smoothing-sigmas 3x2x1x0vox'],...
-            odir1,odir1,odir1,filef,filea,filef,filea,filef,filea,filef,filea ));
+            '--smoothing-sigmas 3x2x1x0vox ' ,...
+            ...
+            '--transform SyN[0.1] ',...
+            '--metric MI[%s,%s,1,32] ',...
+            '--convergence [500x180x60x20x20,1e-6,10] ',...
+            '--shrink-factors 4x3x2x1x1 ',...
+            '--smoothing-sigmas 3x2x1x0x0vox'],...
+            odir1,odir1,odir1,filef,filea,filef,filea,filef,filea,filef,filea,filef,filea ));
 
             % ResampleImage imageDimension inputImage outputImage MxNxO [size=1,spacing=0] [interpolate type] [pixeltype]
             unix(sprintf('ResampleImage 3 %s/anat_warped.nii.gz %s/anat_res_ref.nii.gz 3x3x3 0 0 6 -v',Anatloc,odir1 ));
@@ -133,8 +128,8 @@ for nr=1:N_func
             nuff = sprintf('%s/%s_wrp1%03u_tu.nii.gz',pref,prefix_set{nr},i-1);
 
             %-- apply the composite transforms to warp into tempalte space
-            unix(sprintf('antsApplyTransforms -d 3 -i %s/%s_dis1%03u.nii.gz -o [%s,0] -t %s/anatQQ_WARP.nii.gz -t %s/anatQQ_GenericAffine.mat -t [%s/alj0GenericAffine.mat,1] -t %s/%s_motmat.aff12.1D/aff1%03u.mat -r %s/anat_res_ref.nii.gz',...
-                pref,prefix_set{nr},i-1, nuff, Anatloc, Anatloc, odir1, odir1,prefix_set{nr},i-1, odir1 ))
+            unix(sprintf('antsApplyTransforms -d 3 -i %s/%s_dis1%03u.nii.gz -o [%s,0] -t %s/anatQQ_WARP.nii.gz -t %s/anatQQ_GenericAffine.mat -t %s/alj1InverseWarp.nii.gz -t [%s/alj0GenericAffine.mat,1] -t %s/%s_motmat.aff12.1D/aff1%03u.mat -r %s/anat_res_ref.nii.gz',...
+                pref,prefix_set{nr},i-1, nuff, Anatloc, Anatloc, odir1, odir1, odir1,prefix_set{nr},i-1, odir1 ))
         end
         ofile = sprintf('%s/%s_warped.nii.gz',odir2,prefix_set{nr});
         unix(sprintf('ImageMath 4 %s TimeSeriesAssemble %u 0 %s/%s_wrp1*.nii.gz',ofile,ts,pref,prefix_set{nr}))

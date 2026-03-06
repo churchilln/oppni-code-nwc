@@ -485,6 +485,7 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
 % %     map = kurtosis(double(V2.img),0,4)-kurtosis(double(V1.img),0,4);
 % %     map(~isfinite(map))=eps;
 % %     mosaic_viewer( map, 3, [], [], 'jet', 1 )
+
 end
 
 %% Checkpoint

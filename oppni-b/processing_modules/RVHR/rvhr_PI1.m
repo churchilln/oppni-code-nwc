@@ -76,9 +76,8 @@ end
     % run physio-proc & export regressor files
         puls = load(pulsfile);
         resp = load(respfile);
-        % proc -turn 5's into 1's to fit TAPAS guidelines /  insert a column of zeros before the original column
-        puls = puls/5;
-        puls = [zeros(size(puls, 1), 1), puls];
+        % proc -convert nonzero values to 1's to fit TAPAS guidelines /  insert a column of zeros before the original column
+        puls = [zeros(size(puls, 1), 1), double(puls>0)];
         % save modified matrix as a .log file
         currentpuls =  sprintf('%s/func.puls.log',pref);
         currentresp =  sprintf('%s/func.resp.log',pref);

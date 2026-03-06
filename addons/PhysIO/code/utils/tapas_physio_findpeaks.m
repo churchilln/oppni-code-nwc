@@ -36,7 +36,9 @@ function [pks,locs] = tapas_physio_findpeaks(X,varargin)
 % see the file COPYING or <http://www.gnu.org/licenses/>.
  
 if exist('findpeaks', 'file')
+    '???'
     [pks,locs] = findpeaks(X,varargin{:}); 
+    '!!!'
 else
     % previously:
     % [pks,locs] = tapas_physio_findpeaks_compatible(X,varargin{:});

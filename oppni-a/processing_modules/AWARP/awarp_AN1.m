@@ -101,6 +101,13 @@ if ~exist( sprintf('%s/anat_warped.nii.gz',odir) ,'file')
     unix(sprintf('cp %s/aln0GenericAffine.mat %s/anatQQ_GenericAffine.mat',pref,odir));
     
     unix(sprintf('rm -rf %s',pref));
+
+    % remask unwarped n warped, for qc etc
+    unix(sprintf('3dmask_tool -dilate_input 5 -5 -fill_holes -input %s/anat_warped.nii.gz -prefix %s/anatBrainMask_warped.nii.gz',odir,odir))
+
 else
-    disp('ants-warp already exists!')
+    sprintf('3dmask_tool -dilate_input 5 -5 -fill_holes -input %s/anat_warped.nii.gz -prefix %s/anatBrainMask_warped.nii.gz',odir,odir),
+    % remask unwarped n warped, for qc etc
+    unix(sprintf('3dmask_tool -dilate_input 5 -5 -fill_holes -input %s/anat_warped.nii.gz -prefix %s/anatBrainMask_warped.nii.gz',odir,odir))
+    disp('pants-warp already exists!')
 end

@@ -77,14 +77,23 @@ if ~exist(sprintf('%s/%s_ricor.nii.gz',odir,prefix),'file')
     % run physio-proc & export regressor files
         puls = load(pulsfile);
         resp = load(respfile);
-        % proc -turn 5's into 1's to fit TAPAS guidelines /  insert a column of zeros before the original column
-        puls = puls/5;
-        puls = [zeros(size(puls, 1), 1), puls];
-        % save modified matrix as a .log file
-        currentpuls =  sprintf('%s/func.puls.log',pref);
-        currentresp =  sprintf('%s/func.resp.log',pref);
-        writematrix(puls, currentpuls,'FileType','text');
-        writematrix(resp, currentresp,'FileType','text');
+
+        if isempty(puls)
+            currentpuls=[];
+        else
+            % proc -convert nonzero values to 1's to fit TAPAS guidelines /  insert a column of zeros before the original column
+            puls = [zeros(size(puls, 1), 1), double(puls>0)];
+            % save modified matrix as a .log file
+            currentpuls =  sprintf('%s/func.puls.log',pref);
+            writematrix(puls, currentpuls,'FileType','text');
+        end
+        if isempty(resp)
+            currentresp=[];
+        else
+            currentresp =  sprintf('%s/func.resp.log',pref);
+            % save (un)modified matrix as a .log file
+            writematrix(resp, currentresp,'FileType','text');
+        end
 
         % construct physio structure
         physio = tapas_physio_new();
@@ -92,8 +101,8 @@ if ~exist(sprintf('%s/%s_ricor.nii.gz',odir,prefix),'file')
         % Individual Parameter settings...
         physio.save_dir = pref; 
         physio.log_files.vendor = 'Custom';
-        physio.log_files.cardiac = {currentpuls}; %'sub-035C_ses-2-bos_bold_BH.puls.log'
-        physio.log_files.respiration = {currentresp};
+        physio.log_files.cardiac = currentpuls; %'sub-035C_ses-2-bos_bold_BH.puls.log'
+        physio.log_files.respiration = currentresp;
         physio.log_files.scan_timing = {''};
         physio.log_files.sampling_interval = acqpar.physamp_msec./1000; %**
         physio.log_files.relative_start_acquisition = 0;

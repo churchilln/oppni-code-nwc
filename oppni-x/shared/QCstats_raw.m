@@ -2,7 +2,64 @@ function [QCtable_compat QCtable_quant] = QCstats_raw( filepaths, prefixes, outp
 %
 % script collects basic quality control information for minimally
 % processed scans, anatomical or functional
+%
+% Syntax:
+%          [QCtable_compat QCtable_quant] = QCstats_raw( filepaths, prefixes, outpath, type, lean, minqc )
+%
+% Input:
+%          filepaths : cell array of strings, specifying location+name of files to be analyzed
+%          prefixes  : cell array of strings, specifying subject IDs to be carried forwards
+%          outpath  : string, specifying folder to write outputs to
+%          type : string specifying file type - either 'anat' or 'func'
+%          lean : saves fewer derivatives to reduce storage demands
+%          minqc : 0=does full qc / 1=skips most qc steps (0 default)
 % 
+% Output:
+%          QCtable_compat : table containing acquisition param info, to assess mutual compatibility of files 
+%          QCtable_quant  : table containing quantitative QC metrics
+%
+%
+% for 'anat' data:
+%
+% SNRa_av = SNR > all-brain mean vs. noise SD
+% CoVa_av = Coefficient of Variation, measures spatial signal homogeneity
+% sACav_av = image spatial autocorrelation average
+% sACd1 = image spatial autocorrelation first difference
+% sACd2 = image spatial autocorrelation second difference
+% ACav_av = noise spatial autocorrelation average
+% nACd1 = image spatial autocorrelation first difference
+% nACd2 = image spatial autocorrelation second difference
+% mvol = mask volume
+% SNRc, SNRg, SNRw = SNR of CSF, grey matter, white matter
+% CoVc, CoVg, CoVw = CoV of CSF, grey matter, white matter
+% CNRcg, CNRcw, CNRgw = CNR of csf vs. grey / csf vs. white / grey vs. white
+%
+% for 'func' data:
+%
+% SNRa_tav = spatial SNR, time-averaged;
+% CoVa_tav = spatial CoV, time-averaged;
+% sACav_tav = image spatial autocorrelation average, time-averaged 
+% sACd1_tav = image spatial autocorrelation first difference, time-averaged 
+% sACd2_tav = image spatial autocorrelation second difference, time-averaged 
+% nACav_tav = noise spatial autocorrelation average, time-averaged 
+% nACd1_tav = image spatial autocorrelation first difference, time-averaged 
+% nACd2_tav  = image spatial autocorrelation second difference, time-averaged 
+% SNRa_tsd = spatial SNR, time-stdev;
+% CoVa_tsd = spatial CoV, time-stdev;
+% sACav_tsd= image spatial autocorrelation average, time-stdev;
+% sACd1_tsd = image spatial autocorrelation first difference,time-stdev;
+% sACd2_tsd = image spatial autocorrelation second difference, time-stdev;
+% nACav_tsd = noise spatial autocorrelation average, time-stdev;
+% nACd1_tsd = image spatial autocorrelation first difference, time-stdev;
+% nACd2_tsd = image spatial autocorrelation second difference, time-stdev;            %
+% mvol = mask volume
+% SNRt_sav = temporal SNR, spatially averaged
+% SNRt_ssd = temporla SNR, spatially stdev
+% tACav = temporal autocorrelation average, spatial-averaged 
+% tACd1 = temporal autocorrelation first differenc, spatial-averaged 
+% tACd2 = temporal autocorrelation second difference, spatial-averaged 
+%
+
 
 [NSmax NRmax] = size(filepaths);
 

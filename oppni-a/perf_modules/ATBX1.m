@@ -255,6 +255,7 @@ if ~isempty(outname)
 
     % --------------------- saving 4d functional data ---------------------
     nii.hdr.dime.dim(5) = size(TMPVOL,4);
+    nii.info.ImageSize(4) = size(TMPVOL,4);
 
     % --tcbf--
     for(t=1:round(Ntime/2)) 
@@ -274,6 +275,7 @@ if ~isempty(outname)
 
     % --------------------- saving the average volumes ---------------------
     nii.hdr.dime.dim(5) = 1;
+    nii.info.ImageSize(4) = 1;
     
     % --mean:tcbf--
     TMPVOL=mask;TMPVOL(TMPVOL>0)=output.aCBF_mean;

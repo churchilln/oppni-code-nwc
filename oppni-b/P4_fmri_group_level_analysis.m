@@ -293,7 +293,7 @@ fprintf('\n=========================================================\n');
     % check for bad/missing values
     fprintf('Missing data check, imaging:\n');
     ixdrop_D = (mean(~isfinite(D2),1)>0.10)';
-    fprintf('number of volumes with more than 10 percent of voxels missing: %s\n',sum(ixdrop_D));
+    fprintf('number of volumes with more than 10 percent of voxels missing: %u\n',sum(ixdrop_D));
     if     mean(ixdrop_D)==0   fprintf('no missing data.\n')
     elseif mean(ixdrop_D)<0.10 fprintf('less than 10 percent of participants have substantial missing data.\n');
     elseif mean(ixdrop_D)>0.10 warning('more than 10 percent of participants have substantial missing data.\n');
@@ -305,7 +305,7 @@ fprintf('\n=========================================================\n');
         disp('...no design matrix!\n');
     else
         ixdrop_X = ~isfinite(mean(X2,2));
-        fprintf('number of design rows with missing data: %s\n',sum(ixdrop_X));
+        fprintf('number of design rows with missing data: %u\n',sum(ixdrop_X));
         if     mean(ixdrop_X)==0   fprintf('no missing data.\n')
         elseif mean(ixdrop_X)<0.10 fprintf('less than 10 percent of participants have substantial missing data.\n');
         elseif mean(ixdrop_X)>0.10 warning('more than 10 percent of participants have substantial missing data.\n');
@@ -463,6 +463,10 @@ if strcmpi( analysis_model, 'SMOOTH_EST')
     nii.hdr.dime.datatype = 16;
     nii.hdr.hist = MB.hdr.hist;
     nii.hdr.dime.dim(5) = size(D2,2);
+    %
+    nii.info.ImageSize = [nii.info.ImageSize(1:3) size(D2,2)];
+    nii.info.PixelDimensions = [nii.info.PixelDimensions(1:3) 1];
+    %
     save_untouch_niiz(nii,[out_folder_name,'/DMAT_for_SMOOTH_EST.nii']); 
     save_untouch_niiz( MB,[out_folder_name,'/MASK_for_SMOOTH_EST.nii']); 
     
@@ -674,6 +678,10 @@ if strcmpi( param_type,'image' )
     nii.hdr.dime.datatype = 16;
     nii.hdr.hist = MB.hdr.hist;
     nii.hdr.dime.dim(5) = size(tmaps,2);
+    %
+    nii.info.ImageSize = [nii.info.ImageSize(1:3) size(tmaps,2)];
+    nii.info.PixelDimensions = [nii.info.PixelDimensions(1:3) 1];
+    %
     save_untouch_niiz(nii,[out_folder_name,'/',vfield,'_unthresh.nii']); 
     
     %--2
@@ -688,6 +696,10 @@ if strcmpi( param_type,'image' )
     nii.hdr.dime.datatype = 16;
     nii.hdr.hist = MB.hdr.hist;
     nii.hdr.dime.dim(5) = size(tmaps,2);
+    %
+    nii.info.ImageSize = [nii.info.ImageSize(1:3) size(tmaps,2)];
+    nii.info.PixelDimensions = [nii.info.PixelDimensions(1:3) 1];
+    %
     save_untouch_niiz(nii,[out_folder_name,'/',pfield,'_unthresh.nii']); 
     
     if strcmpi(THRESH_METHOD{1},'FDR')
@@ -721,6 +733,10 @@ if strcmpi( param_type,'image' )
         nii.hdr.dime.datatype = 16;
         nii.hdr.hist = MB.hdr.hist;
         nii.hdr.dime.dim(5) = size(tmaps,2);
+        %
+        nii.info.ImageSize = [nii.info.ImageSize(1:3) size(tmaps,2)];
+        nii.info.PixelDimensions = [nii.info.PixelDimensions(1:3) 1];
+        %
         save_untouch_niiz(nii,[out_folder_name,'/',vfield,'_',THRESH_METHOD{1},'.nii']); 
     end
 

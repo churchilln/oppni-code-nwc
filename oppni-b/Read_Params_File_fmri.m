@@ -31,6 +31,19 @@ procstyle = [0,         0,          0,       0,        1,       1,        0,    
 
 ileft  = strfind( paramstring, '[' );
 iright = strfind( paramstring, ']' );
+if numel(ileft) ~= numel(iright)
+    error('different number of left/right square brackets in param file!');
+else
+    for i=1:numel(ileft)-1
+        ix=find(iright>ileft(i) & iright<ileft(i+1));
+        if isempty(ix) 
+            error('missing a closing bracket for opening bracket #%u in param file',i);
+        elseif numel(ix)>1
+            error('too many closing brackets for opening bracket #%u in param file',i);
+        end
+    end
+end
+
 for(s=1:length(steplist))
     iStep = strfind( upper(paramstring), strcat(steplist{s},'=') );
     if isempty(iStep)

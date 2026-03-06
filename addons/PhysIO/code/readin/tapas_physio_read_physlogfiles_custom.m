@@ -97,8 +97,12 @@ if hasDifferentSamplingRates && hasCardiacFile && hasRespirationFile
     end
     
 else
-    nSamples = max(size(c,1), size(r,1));
-    t = -log_files.relative_start_acquisition + ((0:(nSamples-1))*dt)';
+    % NWC mod: handle 2-vector of timings
+    [nSamples, icr] = max([size(c,1), size(r,1)]);
+    if numel(dt)==1
+        icr=1;
+    end
+    t = -log_files.relative_start_acquisition + ((0:(nSamples-1))*dt(icr))';
 end
 
 hasCpulses = size(c,2) > 1; %2nd column with pulse indicator set to one

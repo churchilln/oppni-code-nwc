@@ -331,7 +331,7 @@ for onset_slice = onset_slices
         %% 4.3. Create a heart-rate variability regressor using the cardiac response
         % function
         
-        if model.hrv.include
+        if model.hrv.include && hasCardiacData %% CHANGE NWC
             [convHRV, ons_secs.hr, verbose] = tapas_physio_create_hrv_regressors(...
                 ons_secs, sqpar, model.hrv, verbose);
             
@@ -343,7 +343,7 @@ for onset_slice = onset_slices
         %% 4.4. Create a respiratory volume/time regressor using the respiratory response
         % function
         
-        if model.rvt.include
+        if model.rvt.include && hasRespData %% CHANGE NWC
             [convRVT, ons_secs.rvt, verbose] = tapas_physio_create_rvt_regressors(...
                 ons_secs, sqpar, model.rvt, verbose);
             
