@@ -25,7 +25,7 @@ else
     pipelinestring = pipelinefile; %% just directly assign the string
 end
 
-steplist = {'PNAME','AMASK','AWARP','ASEG','DESPIKE','RICOR','TSHIFT','FWARP','SMOOTH','DETREG','GSREG','MOTREG','ROIREG','RVHR','TASKREG','LOPASS','COMPFILT'}; % ,'PHYCOR'
+steplist = {'PNAME','AMASK','AWARP','ASEG','DESPIKE','RICOR','TSHIFT','UNDIST','FWARP','SMOOTH','DETREG','GSREG','MOTREG','ROIREG','RVHR','TASKREG','LOPASS','COMPFILT'}; % ,'PHYCOR'
 
 ileft  = strfind( pipelinestring, '[' );
 iright = strfind( pipelinestring, ']' );
@@ -80,9 +80,10 @@ a=sprintf('%s_',PipeStruct.ASEG{:});
 a=sprintf('%s_',PipeStruct.DESPIKE{:});
 b=sprintf('%s_',PipeStruct.RICOR{:});
 c=sprintf('%s_',PipeStruct.TSHIFT{:});
-d=sprintf('%s_',PipeStruct.FWARP{:});
-e=sprintf('%s_',PipeStruct.SMOOTH{:});
-    tmp_P1_ID = ['#P1#','.',a(1:end-1),'.',b(1:end-1),'.',c(1:end-1),'.',d(1:end-1),'.',e(1:end-1)];
+d=sprintf('%s_',PipeStruct.UNDIST{:});
+e=sprintf('%s_',PipeStruct.FWARP{:});
+f=sprintf('%s_',PipeStruct.SMOOTH{:});
+    tmp_P1_ID = ['#P1#','.',a(1:end-1),'.',b(1:end-1),'.',c(1:end-1),'.',d(1:end-1),'.',e(1:end-1),'.',f(1:end-1)];
 % subpipe - func-everything else
 a=sprintf('%s_',PipeStruct.DETREG{:});
 b=sprintf('%s_',PipeStruct.GSREG{:});
