@@ -16,6 +16,16 @@ if stage==0
         if sum(strcmpi(InputStruct(ns).TPATTERN,spec_case))==0 && ~exist(InputStruct(ns).TPATTERN,'file')
             error('%sExpected to find TPATTERN file but did not:\n\t%s\n',lstr,InputStruct(ns).TPATTERN)
         end
+        if isfield(InputStruct,'DIST_filename') && ~isempty(InputStruct(ns).DIST_filename) && ~exist( InputStruct(ns).DIST_filename ,'file')
+            error('%sExpected to find DIST file but did not:\n\t%s\n', lstr, InputStruct(ns).DIST_filename );
+        end
+        if isfield(InputStruct,'DIST_volumes') && ~isempty(InputStruct(ns).DIST_volumes)
+            for nv=1:numel(InputStruct(ns).DIST_volumes)
+                if ~exist( InputStruct(ns).DIST_volumes{nv} ,'file')
+                    error('%sExpected to find DIST volume but did not:\n\t%s\n', lstr, InputStruct(ns).DIST_volumes{nv} );
+                end
+            end
+        end
 
         % func n physio n task
         for nr=1:InputStruct(ns).N_func
@@ -88,4 +98,3 @@ elseif stage==1
         end
     end
 end
-
