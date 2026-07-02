@@ -168,6 +168,31 @@ while ischar(tline)
         end
     end
 
+    fieldname = 'DIST';
+    if contains( upper(tline), strcat(fieldname,'=') )
+        isrt = strfind( upper(tline),[fieldname,'='] ) + (numel(fieldname)+1);
+        iend = ispaces(ispaces>=isrt);
+        filestring_temp = tline(isrt:iend(1)); % take first ending
+        if numel(filestring_temp)<3 || filestring_temp(1)~='[' || filestring_temp(end)~=']'
+            error('mistake in DIST call. Check line:\n\t%s\n',tline);
+        end
+        filestring_temp = filestring_temp(2:end-1);
+        if  ~contains(filestring_temp,',')
+             filestring_temp = {filestring_temp};
+        else filestring_temp = regexp(filestring_temp,',','split');
+        end
+        filestring_temp = strtrim(filestring_temp);
+        if sum(cellfun(@isempty,filestring_temp))>0
+            error('DIST field contains empty arguments. Check line:\n\t%s\n',tline);
+        end
+        InputStruct(ns).DIST_filename = filestring_temp{1};
+        InputStruct(ns).DIST_volumes  = filestring_temp(2:end);
+    else
+        warning('input file line does not contain optional %s field - some distortion correction may not work\n\t%s\n',fieldname,tline);
+        InputStruct(ns).DIST_filename = [];
+        InputStruct(ns).DIST_volumes  = [];
+    end
+
     %% anatomical data and derivatives...
 
     fieldname = 'ANAT';
