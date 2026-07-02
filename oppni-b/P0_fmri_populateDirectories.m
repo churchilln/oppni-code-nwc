@@ -95,6 +95,20 @@ clear ParamStruct;
 
 mkdir_r( fullfile(outpath,'_pipe_manager') );
 
+%-- catch for multiple jobs accessing pipekey
+
+lockdir = fullfile(outpath,'_pipe_manager','.pipe_key_lock');
+
+while true
+    [st, ~] = system(sprintf('mkdir %s 2>/dev/null', lockdir));
+    if st == 0
+        break;
+    end
+    pause(0.2 + rand());
+end
+
+try
+
 if ~exist(fullfile(outpath,'_pipe_manager','pipe_key.mat'),'file')
 
     pipe_key.Warp{1,1} = 1;
@@ -181,6 +195,14 @@ else
     
     save(fullfile(outpath,'_pipe_manager','pipe_key.mat'),'pipe_key');
 end
+
+%-- catch for multiple jobs accessing pipekey
+
+catch ME
+    system(sprintf('rm -rf %s', lockdir));
+    rethrow(ME);
+end
+system(sprintf('rm -rf %s', lockdir));
 
 % store numeric indexing for pipeline structures
 PipeStruct.pipe_idx = pipe_idx;

@@ -9,9 +9,9 @@ if isempty(ParamCell) || isempty(ParamCell{1})
 else
     doTouchup = ParamCell{1};
     if strcmpi(doTouchup,'True')
-        doTouchup=True;
+        doTouchup=true;
     elseif strcmpi(doTouchup,'False')
-        doTouchup=False;
+        doTouchup=false;
     else
         error('doTouchup option must be True or False!')
     end

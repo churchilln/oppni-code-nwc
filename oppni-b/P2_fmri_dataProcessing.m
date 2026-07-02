@@ -118,21 +118,38 @@ else
 end
 
 if IMPORT_MASKFILES==0
-    % store information about masking sublist...
-    subject_list_formask = subject_list(mask_subj_idxes);
-    % consistency checking
-    if exist([outpath,'/_group_level/pipe_',PipeStruct_aug.PNAME{1},'_mask_subj_idxes.mat'],'file')
-        x=load([outpath,'/_group_level/pipe_',PipeStruct_aug.PNAME{1},'_mask_subj_idxes.mat']);
-        if     ~isempty( setdiff(subject_list_formask,x.subject_list_formask) ) 
-            error('custom subject list for masking :: subjects in new list not present in old! delete group level folders if you want to update!')
-        elseif ~isempty( setdiff(x.subject_list_formask,subject_list_formask) )
-            error('custom subject list for masking :: subjects not in new list that are present in old! delete group level folders if you want to update!')
-        else
-            disp('custom subject list for masking :: list is consistent with old one ... continuing without modification!')
-        end        
+
+    %-- catch for multiple jobs accessing pipekey
+    
+    maskmat = [outpath,'/_group_level/pipe_',PipeStruct_aug.PNAME{1},'_mask_subj_idxes.mat'];
+    lockdir = fullfile(outpath,'_group_level',['.mask_subj_idxes_lock_pipe_',PipeStruct_aug.PNAME{1}]);
+
+    while true
+        [st, ~] = system(sprintf('mkdir %s 2>/dev/null', lockdir));
+        if st == 0
+            break;
+        end
+        pause(0.2 + rand());
     end
-    % re-saving, in case indexes need updating ( they may change, as long as subject prefix list doesnt )
-    save([outpath,'/_group_level/pipe_',PipeStruct_aug.PNAME{1},'_mask_subj_idxes.mat'],'mask_subj_idxes','subject_list_formask');
+
+    try
+        subject_list_formask = subject_list(mask_subj_idxes);
+        if exist(maskmat,'file')
+            x = load(maskmat);
+            if     ~isempty(setdiff(subject_list_formask, x.subject_list_formask))
+                error('custom subject list for masking :: subjects in new list not present in old! delete group level folders if you want to update!')
+            elseif ~isempty(setdiff(x.subject_list_formask, subject_list_formask))
+                error('custom subject list for masking :: subjects not in new list that are present in old! delete group level folders if you want to update!')
+            else
+                disp('custom subject list for masking :: list is consistent with old one ... continuing without modification!')
+            end
+        end
+        save(maskmat, 'mask_subj_idxes', 'subject_list_formask');
+    catch ME
+        system(sprintf('rm -rf %s', lockdir));
+        rethrow(ME);
+    end
+    system(sprintf('rm -rf %s', lockdir));
 else
     % store information about importing paths + consistency checking...
     if exist([outpath,'/_group_level/pipe_',PipeStruct_aug.PNAME{1},'_mask_subj_paths.mat'],'file')

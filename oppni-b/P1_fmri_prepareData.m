@@ -203,7 +203,7 @@ for i=1:size(catmat,2)
     if ~isempty(ix)
         for j = 1:numel(ix)
             ko=ko+1;
-            fprintf(filo,'%u. Line=%u/%u, ID=%s, metric=%s:  value is %.2f, median is %.2f\n',ko,ix(j),size(catmat,1),catid{ix(j)},ytmp{i}, catmat(ix(j),i),xmed);
+            fprintf(filo,'%u. Line=%u/%u, ID=%s, metric=%s:  value is %.2f, median is %.2f\n',ko,ix(j),size(catmat,1),catid{ix(j)},ytmp{i+1}, catmat(ix(j),i),xmed);
         end
     end
 end
@@ -236,7 +236,7 @@ for i=1:size(catmat,2)
     if ~isempty(ix)
         for j = 1:numel(ix)
             ko=ko+1;
-            fprintf(filo,'%u. Line=%u/%u, ID=%s, metric=%s:  value is %.2f, median is %.2f\n',ko,ix(j),size(catmat,1),catid{ix(j)},ytmp{i}, catmat(ix(j),i),xmed);
+            fprintf(filo,'%u. Line=%u/%u, ID=%s, metric=%s:  value is %.2f, median is %.2f\n',ko,ix(j),size(catmat,1),catid{ix(j)},ytmp{i+1}, catmat(ix(j),i),xmed);
         end
     end
 end

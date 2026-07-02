@@ -24,6 +24,21 @@ end
 Mw = load_untouch_niiz(brain_mask);
 mask_brain = double(Mw.img);
 
+%-- catch for multiple jobs accessing pipekey
+
+[~, pipetag] = fileparts(odir);
+lockdir = fullfile(fileparts(fileparts(odir)), ['.roimask_lock_', pipetag]);
+
+while true
+    [st, ~] = system(sprintf('mkdir %s 2>/dev/null', lockdir));
+    if st == 0
+        break;
+    end
+    pause(0.2 + rand());
+end
+
+try
+
 % masking the masks...
 %
 % CSF -- conservative mask, to avoidd vascular/GM spillover; no smooth since it can wipe out probs 
@@ -82,7 +97,6 @@ clear Vw;
 % Var
 Vw=load_untouch_niiz(tsd_map);
 Vw.img = clust_up( double( Vw.img > prctile(Vw.img(mask_brain>0), round(100*spec_set.tsd_rthresh) ) ) .* mask_brain ,20);
-save_untouch_niiz(Vw,[odir,'/func_tSD_mask_grp.nii']);
 
 if exist([odir,'/func_tSD_mask_grp.nii'],'file')
     Vold = load_untouch_niiz([odir,'/func_tSD_mask_grp.nii']);
@@ -93,6 +107,14 @@ else
     save_untouch_niiz(Vw,[odir,'/func_tSD_mask_grp.nii']);
 end
 clear Vw;
+
+%-- catch for multiple jobs accessing pipekey
+
+catch ME
+    system(sprintf('rm -rf %s', lockdir));
+    rethrow(ME);
+end
+system(sprintf('rm -rf %s', lockdir));
 
 
 
