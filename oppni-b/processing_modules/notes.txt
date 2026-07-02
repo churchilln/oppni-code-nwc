@@ -57,6 +57,8 @@ RICOR
     >in "odir" creates <prefix>_ricor.nii; ???
 TSHIFT
     >in "odir" creates <prefix>_tshift.nii; ???
+UNDIST
+    >in "odir" creates <prefix>_undist.nii; ???
 
 FWARP
     >in "odir1" creates <prefix>_mask.nii (func mask); <prefix>_motref.nii (reference volumee for alignment); <prefix>_motref_masked.nii (masked ref volume)
