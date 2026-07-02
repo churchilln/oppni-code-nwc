@@ -394,9 +394,29 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
             pfun( sprintf('%s/prewarp/func%u_ricor.nii.gz',opath2f,nr), sprintf('func%u',nr), sprintf('%s/prewarp',opath2f), InputStruct_ssa.TPATTERN, PipeStruct_aug.(Step)(2:end) );  
         end
 
+        % >>> Distortion correction
+        Step = 'UNDIST';
+        if strcmpi(PipeStruct_aug.(Step){1},'OFF')
+            unix(sprintf('cp %s/prewarp/func%u_tshift.nii.gz %s/prewarp/func%u_undist.nii.gz',opath2f,nr, opath2f,nr));
+        else
+            % get function handle for analysis model of interest
+            currPath=pwd;                               % get current path
+            cd(pipeline_struct.(Step).filepath);               % jump to module directory
+            pfun= str2func(pipeline_struct.(Step).model_name); % get function handle
+            cd(currPath);                               % jump back to current path
+            % execute step:
+            if ~isfield(InputStruct_ssa,'DIST_filename') || isempty(InputStruct_ssa.DIST_filename)
+                error('Cannot do UNDIST without specifying a DIST filename in the input file, for %s!',InputStruct_ssa.PREFIX);
+            else
+                clear acqpar;
+                acqpar = Read_Dist_File_fmri( InputStruct_ssa.DIST_filename );
+            end
+            pfun( sprintf('%s/prewarp/func%u_tshift.nii.gz',opath2f,nr), sprintf('func%u',nr), sprintf('%s/prewarp',opath2f), acqpar, InputStruct_ssa.DIST_volumes, PipeStruct_aug.(Step)(2:end) );
+        end
+
         % fixing orientation stuff -- adjusting for obliquity, switching to standard mni-compatible orientation 
         if ~exist(sprintf('%s/prewarp/func%u_2std.nii.gz',opath2f,nr),'file')
-            unix(sprintf('3dWarp -oblique2card -prefix %s/prewarp/func%u_deob.nii.gz -wsinc5 %s/prewarp/func%u_tshift.nii.gz' , opath2f,nr, opath2f,nr));
+            unix(sprintf('3dWarp -oblique2card -prefix %s/prewarp/func%u_deob.nii.gz -wsinc5 %s/prewarp/func%u_undist.nii.gz' , opath2f,nr, opath2f,nr));
             unix(sprintf('fslreorient2std %s/prewarp/func%u_deob.nii.gz %s/prewarp/func%u_2std.nii.gz',opath2f,nr,opath2f,nr));
             if exist(sprintf('%s/prewarp/func%u_2std.nii.gz',opath2f,nr),'file')
                 unix(sprintf('rm %s/prewarp/func%u_deob.nii.gz', opath2f,nr)); % not really useful intermediate - delete it
@@ -1407,4 +1427,3 @@ for ns=subj_list_for_proc % step through func-proc (block-2)
 end
 
 disp('funxionale block-2 done');
-
