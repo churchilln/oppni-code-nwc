@@ -19,10 +19,13 @@ if stage==0
         if isfield(InputStruct,'DIST_filename') && ~isempty(InputStruct(ns).DIST_filename) && ~exist( InputStruct(ns).DIST_filename ,'file')
             error('%sExpected to find DIST file but did not:\n\t%s\n', lstr, InputStruct(ns).DIST_filename );
         end
-        if isfield(InputStruct,'DIST_volumes') && ~isempty(InputStruct(ns).DIST_volumes)
-            for nv=1:numel(InputStruct(ns).DIST_volumes)
-                if ~exist( InputStruct(ns).DIST_volumes{nv} ,'file')
-                    error('%sExpected to find DIST volume but did not:\n\t%s\n', lstr, InputStruct(ns).DIST_volumes{nv} );
+        if isfield(InputStruct,'PE_rev') && ~isempty(InputStruct(ns).PE_rev) && ~exist( InputStruct(ns).PE_rev ,'file')
+            error('%sExpected to find PE_rev file but did not:\n\t%s\n', lstr, InputStruct(ns).PE_rev );
+        end
+        if isfield(InputStruct,'FIELD') && ~isempty(InputStruct(ns).FIELD)
+            for nv=1:numel(InputStruct(ns).FIELD)
+                if ~exist( InputStruct(ns).FIELD{nv} ,'file')
+                    error('%sExpected to find FIELD file but did not:\n\t%s\n', lstr, InputStruct(ns).FIELD{nv} );
                 end
             end
         end
