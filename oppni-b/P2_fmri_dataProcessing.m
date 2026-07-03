@@ -411,7 +411,21 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
                 clear acqpar;
                 acqpar = Read_Dist_File_fmri( InputStruct_ssa.DIST_filename );
             end
-            pfun( sprintf('%s/prewarp/func%u_tshift.nii.gz',opath2f,nr), sprintf('func%u',nr), sprintf('%s/prewarp',opath2f), acqpar, InputStruct_ssa.DIST_volumes, PipeStruct_aug.(Step)(2:end) );
+            switch upper(PipeStruct_aug.(Step){1})
+                case {'FL1','AF1'}
+                    if ~isfield(InputStruct_ssa,'PE_rev') || isempty(InputStruct_ssa.PE_rev)
+                        error('Cannot do UNDIST %s without specifying PE_rev in the input file, for %s!',PipeStruct_aug.(Step){1},InputStruct_ssa.PREFIX);
+                    end
+                    refvol_cell = {InputStruct_ssa.PE_rev};
+                case 'FL2'
+                    if ~isfield(InputStruct_ssa,'FIELD') || isempty(InputStruct_ssa.FIELD)
+                        error('Cannot do UNDIST FL2 without specifying FIELD in the input file, for %s!',InputStruct_ssa.PREFIX);
+                    end
+                    refvol_cell = InputStruct_ssa.FIELD;
+                otherwise
+                    error('unrecognized UNDIST model: %s',PipeStruct_aug.(Step){1});
+            end
+            pfun( sprintf('%s/prewarp/func%u_tshift.nii.gz',opath2f,nr), sprintf('func%u',nr), sprintf('%s/prewarp',opath2f), acqpar, refvol_cell, PipeStruct_aug.(Step)(2:end) );
         end
 
         % fixing orientation stuff -- adjusting for obliquity, switching to standard mni-compatible orientation 
