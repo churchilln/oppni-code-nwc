@@ -47,6 +47,26 @@ if ~exist( ParamStruct.TEMPLATE, 'file')
     error('cannot find TEMPLATE image specified in paramfile:\n\t%s\n');
 end
 
+if ~strcmpi(PipeStruct.UNDIST{1},'OFF')
+    for ns=1:numel(InputStruct)
+        if ~isfield(InputStruct,'DIST_filename') || isempty(InputStruct(ns).DIST_filename)
+            error('DIST param must be specified if UNDIST is not OFF, for %s!',InputStruct(ns).PREFIX);
+        end
+        switch upper(PipeStruct.UNDIST{1})
+            case {'FL1','AF1'}
+                if ~isfield(InputStruct,'PE_rev') || isempty(InputStruct(ns).PE_rev)
+                    error('PE_rev must be specified for UNDIST %s, for %s!',PipeStruct.UNDIST{1},InputStruct(ns).PREFIX);
+                end
+            case 'FL2'
+                if ~isfield(InputStruct,'FIELD') || isempty(InputStruct(ns).FIELD) || numel(InputStruct(ns).FIELD)<2
+                    error('FIELD must specify magnitude and phasediff files for UNDIST FL2, for %s!',InputStruct(ns).PREFIX);
+                end
+            otherwise
+                error('unrecognized UNDIST model: %s',PipeStruct.UNDIST{1});
+        end
+    end
+end
+
 %% Construct group-level directory structure, with template file copying
 
 % creating group-level directory structure
