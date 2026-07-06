@@ -5,7 +5,7 @@ function amask_FL1(Adataset, Basedset, odir, ParamCell)
 % .implements fsl_anat script, with some tweaks for compatibility
 
 if isempty(ParamCell) || isempty(ParamCell{1})
-    doTouchup = False;
+    doTouchup = false;
 else
     doTouchup = ParamCell{1};
     if strcmpi(doTouchup,'True')
