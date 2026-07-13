@@ -1,4 +1,4 @@
-function [subject_list] = P1_diff_dataProcessing( inputfile, outpath, bigskip, list )
+function [subject_list] = P1_diff_dataProcessing( inputfile, outpath, bigskip, subj_subset )
 %
 % . this script: 
 % . (a) checks whether input/pipelin/param/template/task/seed files can be read 
@@ -12,16 +12,17 @@ if CODE_PATH(end)~='/'
     CODE_PATH = [CODE_PATH '/'];
 end
 
-if nargin<3 
+if nargin<3 || isempty(big_skip)
     bigskip = 0;
 end
 if nargin<4
-    list=[];
+    subj_subset=0;
 end
 
 PipeStruct.BREF = 'PROX1'; % just uses first-in-run (fwd) and last-in-run (rev)
-% PipeStruct.TOPUP   = 'ON'; % apply topup
-PipeStruct.TOPUP   = 'OFF';
+PipeStruct.TOPUP   = 'ON'; % apply topup
+%PipeStruct.TOPUP   = 'OFF';
+
 %% ========= PHASE ZERO GO ========= %%
 
 outpath = fullfile(outpath,'diff_proc'); % subdir should be diff_proc
@@ -37,14 +38,20 @@ for(ns=1:numel(InputStruct))
     subject_list{ns} = InputStruct(ns).PREFIX;
 end
 
+% subject listing
+if isempty(subj_subset) || subj_subset==0 || subj_subset<0
+    subj_list_for_proc = 1:numel(subject_list);
+else
+    subj_list_for_proc = subj_subset;
+end
+
 disp('Step-0 Complete!');
 
 if bigskip==0
 
 %% ========= PHASE ONE GO ========= %%
 
-
-for ns=1:numel(subject_list)
+for ns=subj_list_for_proc % step through 
 
     fprintf('=== PHASE 1, subject %u/%u ===\n',ns,numel(subject_list)),
 
@@ -316,7 +323,7 @@ end
 
 %% ========= PHASE TWO GO ========= %%
 
-for ns=1:numel(subject_list)
+for ns=subj_list_for_proc % step through 
 
     fprintf('=== PHASE 2, subject %u/%u ===\n',ns,numel(subject_list)),
 
@@ -432,7 +439,7 @@ end % finish bigskip
 
 %% ========= PHASE THREE GO ========= %%
 
-for ns=1:numel(subject_list)
+for ns=subj_list_for_proc % step through 
 
     if( isempty(list) || sum(list==ns)>0 )
     

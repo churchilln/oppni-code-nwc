@@ -35,7 +35,7 @@ if CODE_PATH(end)~='/'
     CODE_PATH = [CODE_PATH '/'];
 end
 
-if nargin<5
+if nargin<5 || isempty(big_skip)
     big_skip=0;
 end
 if nargin<6
