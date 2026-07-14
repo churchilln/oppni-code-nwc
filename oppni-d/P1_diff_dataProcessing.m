@@ -12,7 +12,7 @@ if CODE_PATH(end)~='/'
     CODE_PATH = [CODE_PATH '/'];
 end
 
-if nargin<3 || isempty(big_skip)
+if nargin<3 || isempty(bigskip)
     bigskip = 0;
 end
 if nargin<4
