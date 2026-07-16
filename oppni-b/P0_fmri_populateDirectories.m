@@ -47,6 +47,17 @@ if ~exist( ParamStruct.TEMPLATE, 'file')
     error('cannot find TEMPLATE image specified in paramfile:\n\t%s\n');
 end
 
+if ~strcmpi(PipeStruct.UNDIST{1},'OFF')
+    for ns=1:numel(InputStruct)
+        missing_dist   = ~isfield(InputStruct,'DIST_filename') || isempty(InputStruct(ns).DIST_filename);
+        missing_pe_rev = ~isfield(InputStruct,'PE_rev') || isempty(InputStruct(ns).PE_rev);
+        missing_field  = ~isfield(InputStruct,'FIELD') || isempty(InputStruct(ns).FIELD);
+        if missing_dist || (missing_pe_rev && missing_field)
+            error('DIST, and either PE_rev or FIELD, must be specified if UNDIST is not OFF, for %s!',InputStruct(ns).PREFIX);
+        end
+    end
+end
+
 %% Construct group-level directory structure, with template file copying
 
 % creating group-level directory structure

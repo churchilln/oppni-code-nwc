@@ -168,6 +168,67 @@ while ischar(tline)
         end
     end
 
+    fieldname = 'DIST';
+    if contains( upper(tline), strcat(fieldname,'=') )
+        isrt = strfind( upper(tline),[fieldname,'='] ) + (numel(fieldname)+1);
+        iend = ispaces(ispaces>=isrt);
+        filestring_temp = tline(isrt:iend(1)); % take first ending
+        if numel(filestring_temp)<2 || filestring_temp(1)~='[' || filestring_temp(end)~=']'
+            error('mistake in DIST call. Check line:\n\t%s\n',tline);
+        end
+        filestring_temp = filestring_temp(2:end-1);
+        filestring_temp = strtrim(filestring_temp);
+        if contains(filestring_temp,',')
+            error('DIST field should contain only the distortion parameter file. Use PE_rev or FIELD for NIfTI inputs. Check line:\n\t%s\n',tline);
+        end
+        InputStruct(ns).DIST_filename = filestring_temp;
+    else
+        warning('input file line does not contain optional %s field - some distortion correction may not work\n\t%s\n',fieldname,tline);
+        InputStruct(ns).DIST_filename = [];
+    end
+
+    fieldname = 'PE_REV';
+    if contains( upper(tline), strcat(fieldname,'=') )
+        isrt = strfind( upper(tline),[fieldname,'='] ) + (numel(fieldname)+1);
+        iend = ispaces(ispaces>=isrt);
+        filestring_temp = tline(isrt:iend(1)); % take first ending
+        if numel(filestring_temp)<2 || filestring_temp(1)~='[' || filestring_temp(end)~=']'
+            error('mistake in PE_rev call. Check line:\n\t%s\n',tline);
+        end
+        filestring_temp = strtrim(filestring_temp(2:end-1));
+        if contains(filestring_temp,',')
+            error('PE_rev field should contain only the reverse phase-encoding file. Check line:\n\t%s\n',tline);
+        end
+        InputStruct(ns).PE_rev = filestring_temp;
+    else
+        InputStruct(ns).PE_rev = [];
+    end
+
+    fieldname = 'FIELD';
+    if contains( upper(tline), strcat(fieldname,'=') )
+        isrt = strfind( upper(tline),[fieldname,'='] ) + (numel(fieldname)+1);
+        iend = ispaces(ispaces>=isrt);
+        filestring_temp = tline(isrt:iend(1)); % take first ending
+        if numel(filestring_temp)<2 || filestring_temp(1)~='[' || filestring_temp(end)~=']'
+            error('mistake in FIELD call. Check line:\n\t%s\n',tline);
+        end
+        filestring_temp = strtrim(filestring_temp(2:end-1));
+        if isempty(filestring_temp)
+            filestring_temp = [];
+        elseif ~contains(filestring_temp,',')
+            filestring_temp = {filestring_temp};
+        else
+            filestring_temp = regexp(filestring_temp,',','split');
+            filestring_temp = strtrim(filestring_temp);
+            if sum(cellfun(@isempty,filestring_temp))>0
+                error('FIELD field contains empty arguments. Check line:\n\t%s\n',tline);
+            end
+        end
+        InputStruct(ns).FIELD = filestring_temp;
+    else
+        InputStruct(ns).FIELD = [];
+    end
+
     %% anatomical data and derivatives...
 
     fieldname = 'ANAT';

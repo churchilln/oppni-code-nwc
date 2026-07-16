@@ -441,73 +441,70 @@ end % finish bigskip
 
 for ns=subj_list_for_proc % step through 
 
-    if( isempty(list) || sum(list==ns)>0 )
-    
-        fprintf('=== PHASE 3, subject %u/%u ===\n',ns,numel(subject_list)),
-    
-        InputStruct_ssa = InputStruct(ns); %% single subject
-    
-        opath0 = fullfile(outpath,InputStruct_ssa.PREFIX,'rawdata');
-        opath1 = fullfile(outpath,InputStruct_ssa.PREFIX,'diff_proc_p1/pre_eddy');
-        opath2 = fullfile(outpath,InputStruct_ssa.PREFIX,'diff_proc_p1/eddy');
-        opath3 = fullfile(outpath,InputStruct_ssa.PREFIX,'diff_proc_p2/dti');
-        opath4 = fullfile(outpath,InputStruct_ssa.PREFIX,'diff_proc_p2/noddi');
-        opath5 = fullfile(outpath,InputStruct_ssa.PREFIX,'diff_proc_p2/dki');
-        %
-        mkdir(opath3);
-        mkdir(opath4);
-        mkdir(opath5);
-    
-        % dti proc first
-        load(sprintf('%s/nvol_fwd.mat',opath0));
-        Xbval = load(sprintf('%s/diff_fwd_cat.bval',opath0));
-        Xbvec = load(sprintf('%s/eddy_unwarp.eddy_rotated_bvecs',opath2));
-        for i=1:numel(nvol_fwd)
-            if ~exist(sprintf('%s/dtifit_%u_FA.nii.gz',opath3,i),'file')
-                ist=sum(nvol_fwd(1:(i-1)))+1;
-                iln=nvol_fwd(i);
-                ied=ist+iln-1;
-                % nifti
-                unix(sprintf('fslroi %s/eddy_unwarp.eddy_outlier_free_data.nii.gz %s/datachunk.nii.gz %u %u',opath2,opath3,ist-1,iln)); % zero-rel
-                % bval
-                dlmwrite(sprintf('%s/datachunk.bval',opath3),Xbval(:,ist:ied),'delimiter',' ')
-                % bvec
-                dlmwrite(sprintf('%s/datachunk.bvec',opath3),Xbvec(:,ist:ied),'delimiter',' ','precision',10);
-                % now dti fitting...
-                unix(sprintf('dtifit -k %s/datachunk.nii.gz -o %s/dtifit_%u -m %s/refavg_brain_mask.nii.gz -r %s/datachunk.bvec -b %s/datachunk.bval',...
-                    opath3,opath3,i,opath1,opath3,opath3));
-                % then delete the "datachunks" + MO map (I don't tend to use it for much...
-                unix(sprintf('rm %s/datachunk* %s/dtifit_*_MO.nii.gz',opath3,opath3));
-            else
-                disp('skipping dti fitting! already done...')
-            end
-        end
-        if  numel(nvol_fwd)>1 && ~exist([opath4,'/NODDI_fit_odi.nii'],'file') %noddi
-            unix(sprintf('cp %s/eddy_unwarp.eddy_outlier_free_data.nii.gz %s/tmpnii.nii.gz',opath2,opath4));
-            unix(sprintf('gunzip %s/tmpnii.nii.gz',opath4));
-            unix(sprintf('cp %s/refavg_brain_mask.nii.gz %s/tmpmsk.nii.gz',opath1,opath4));
-            unix(sprintf('gunzip %s/tmpmsk.nii.gz',opath4));
-            % creating .mat ROI set
-            CreateROI( sprintf('%s/tmpnii.nii',opath4), sprintf('%s/tmpmsk.nii',opath4), [opath4,'/DTI_Multi_ROI.mat'] );
-            % defining the NODDI protocol
-            protocol = FSL2Protocol(sprintf('%s/diff_fwd_cat.bval',opath0), sprintf('%s/eddy_unwarp.eddy_rotated_bvecs',opath2));
-            % make model
-            noddi = MakeModel('WatsonSHStickTortIsoV_B0');
-            % batch fitting, all brain voxels
-            batch_fitting_single([opath4,'/DTI_Multi_ROI.mat'], protocol, noddi, [opath4,'/paramFit.mat']);
-            % store as nifti file
-            SaveParamsAsNIfTI([opath4,'/paramFit.mat'],[opath4,'/DTI_Multi_ROI.mat'],sprintf('%s/tmpmsk.nii',opath4),[opath4,'/NODDI_fit']);
+    fprintf('=== PHASE 3, subject %u/%u ===\n',ns,numel(subject_list)),
+
+    InputStruct_ssa = InputStruct(ns); %% single subject
+
+    opath0 = fullfile(outpath,InputStruct_ssa.PREFIX,'rawdata');
+    opath1 = fullfile(outpath,InputStruct_ssa.PREFIX,'diff_proc_p1/pre_eddy');
+    opath2 = fullfile(outpath,InputStruct_ssa.PREFIX,'diff_proc_p1/eddy');
+    opath3 = fullfile(outpath,InputStruct_ssa.PREFIX,'diff_proc_p2/dti');
+    opath4 = fullfile(outpath,InputStruct_ssa.PREFIX,'diff_proc_p2/noddi');
+    opath5 = fullfile(outpath,InputStruct_ssa.PREFIX,'diff_proc_p2/dki');
+    %
+    mkdir(opath3);
+    mkdir(opath4);
+    mkdir(opath5);
+
+    % dti proc first
+    load(sprintf('%s/nvol_fwd.mat',opath0));
+    Xbval = load(sprintf('%s/diff_fwd_cat.bval',opath0));
+    Xbvec = load(sprintf('%s/eddy_unwarp.eddy_rotated_bvecs',opath2));
+    for i=1:numel(nvol_fwd)
+        if ~exist(sprintf('%s/dtifit_%u_FA.nii.gz',opath3,i),'file')
+            ist=sum(nvol_fwd(1:(i-1)))+1;
+            iln=nvol_fwd(i);
+            ied=ist+iln-1;
+            % nifti
+            unix(sprintf('fslroi %s/eddy_unwarp.eddy_outlier_free_data.nii.gz %s/datachunk.nii.gz %u %u',opath2,opath3,ist-1,iln)); % zero-rel
+            % bval
+            dlmwrite(sprintf('%s/datachunk.bval',opath3),Xbval(:,ist:ied),'delimiter',' ')
+            % bvec
+            dlmwrite(sprintf('%s/datachunk.bvec',opath3),Xbvec(:,ist:ied),'delimiter',' ','precision',10);
+            % now dti fitting...
+            unix(sprintf('dtifit -k %s/datachunk.nii.gz -o %s/dtifit_%u -m %s/refavg_brain_mask.nii.gz -r %s/datachunk.bvec -b %s/datachunk.bval',...
+                opath3,opath3,i,opath1,opath3,opath3));
+            % then delete the "datachunks" + MO map (I don't tend to use it for much...
+            unix(sprintf('rm %s/datachunk* %s/dtifit_*_MO.nii.gz',opath3,opath3));
         else
-            disp('skipping noddi fitting! already done...')
+            disp('skipping dti fitting! already done...')
         end
-        if numel(nvol_fwd)>1 && ~exist([opath5,'/dtifit_ms_kurt.nii.gz'],'file') % dki
-            unix(sprintf('dtifit -k %s/eddy_unwarp.eddy_outlier_free_data.nii.gz -o %s/dtifit_ms -m %s/refavg_brain_mask.nii.gz -r %s/eddy_unwarp.eddy_rotated_bvecs -b %s/diff_fwd_cat.bval --kurt --kurtdir',...
-                opath2,opath5,opath1,opath2,opath0));
-            unix(sprintf('rm %s/dtifit_*_MO.nii.gz %s/dtifit_*_FA.nii.gz %s/dtifit_*_MD.nii.gz %s/dtifit_*_V*.nii.gz %s/dtifit_*_L*.nii.gz',...
-                opath5,opath5,opath5,opath5,opath5));
-        else
-            disp('skipping dki fitting! already done...')
-        end
-    
     end
+    if  numel(nvol_fwd)>1 && ~exist([opath4,'/NODDI_fit_odi.nii'],'file') %noddi
+        unix(sprintf('cp %s/eddy_unwarp.eddy_outlier_free_data.nii.gz %s/tmpnii.nii.gz',opath2,opath4));
+        unix(sprintf('gunzip %s/tmpnii.nii.gz',opath4));
+        unix(sprintf('cp %s/refavg_brain_mask.nii.gz %s/tmpmsk.nii.gz',opath1,opath4));
+        unix(sprintf('gunzip %s/tmpmsk.nii.gz',opath4));
+        % creating .mat ROI set
+        CreateROI( sprintf('%s/tmpnii.nii',opath4), sprintf('%s/tmpmsk.nii',opath4), [opath4,'/DTI_Multi_ROI.mat'] );
+        % defining the NODDI protocol
+        protocol = FSL2Protocol(sprintf('%s/diff_fwd_cat.bval',opath0), sprintf('%s/eddy_unwarp.eddy_rotated_bvecs',opath2));
+        % make model
+        noddi = MakeModel('WatsonSHStickTortIsoV_B0');
+        % batch fitting, all brain voxels
+        batch_fitting_single([opath4,'/DTI_Multi_ROI.mat'], protocol, noddi, [opath4,'/paramFit.mat']);
+        % store as nifti file
+        SaveParamsAsNIfTI([opath4,'/paramFit.mat'],[opath4,'/DTI_Multi_ROI.mat'],sprintf('%s/tmpmsk.nii',opath4),[opath4,'/NODDI_fit']);
+    else
+        disp('skipping noddi fitting! already done...')
+    end
+    if numel(nvol_fwd)>1 && ~exist([opath5,'/dtifit_ms_kurt.nii.gz'],'file') % dki
+        unix(sprintf('dtifit -k %s/eddy_unwarp.eddy_outlier_free_data.nii.gz -o %s/dtifit_ms -m %s/refavg_brain_mask.nii.gz -r %s/eddy_unwarp.eddy_rotated_bvecs -b %s/diff_fwd_cat.bval --kurt --kurtdir',...
+            opath2,opath5,opath1,opath2,opath0));
+        unix(sprintf('rm %s/dtifit_*_MO.nii.gz %s/dtifit_*_FA.nii.gz %s/dtifit_*_MD.nii.gz %s/dtifit_*_V*.nii.gz %s/dtifit_*_L*.nii.gz',...
+            opath5,opath5,opath5,opath5,opath5));
+    else
+        disp('skipping dki fitting! already done...')
+    end
+
 end
