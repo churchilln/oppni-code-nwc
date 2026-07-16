@@ -21,6 +21,7 @@ end
 
 PipeStruct.BREF = 'PROX1'; % just uses first-in-run (fwd) and last-in-run (rev)
 PipeStruct.TOPUP   = 'ON'; % apply topup
+PipeStruct.NODDI = 'OFF';
 %PipeStruct.TOPUP   = 'OFF';
 
 %% ========= PHASE ZERO GO ========= %%
@@ -480,7 +481,7 @@ for ns=subj_list_for_proc % step through
             disp('skipping dti fitting! already done...')
         end
     end
-    if  numel(nvol_fwd)>1 && ~exist([opath4,'/NODDI_fit_odi.nii'],'file') %noddi
+    if strcmpi(PipeStruct.NODDI,'ON') && numel(nvol_fwd)>1 && ~exist([opath4,'/NODDI_fit_odi.nii'],'file') %noddi
         unix(sprintf('cp %s/eddy_unwarp.eddy_outlier_free_data.nii.gz %s/tmpnii.nii.gz',opath2,opath4));
         unix(sprintf('gunzip %s/tmpnii.nii.gz',opath4));
         unix(sprintf('cp %s/refavg_brain_mask.nii.gz %s/tmpmsk.nii.gz',opath1,opath4));
