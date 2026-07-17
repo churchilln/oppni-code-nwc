@@ -92,18 +92,10 @@ for split_start=current_split_start:progressStepSize:numOfVoxels
         voxel = roi(i,:)';
         
         % fit the voxel
-        if( ~isfinite(sum(voxel(:))) || (mean(voxel(:)<0)>0.80) ) %%% case of non-finite inputs, or mostly zero...
-            gsps(i,:) = NaN;
-            fobj_gs(i)= NaN;
-            mlps(i,:) = NaN;
-            fobj_ml(i)= NaN;
-            error_code(i)=NaN;
+        if model.noOfStages == 2
+            [gsps(i,:), fobj_gs(i), mlps(i,:), fobj_ml(i), error_code(i)] = ThreeStageFittingVoxel(voxel, protocol, model);
         else
-            if model.noOfStages == 2
-                [gsps(i,:), fobj_gs(i), mlps(i,:), fobj_ml(i), error_code(i)] = ThreeStageFittingVoxel(voxel, protocol, model);
-            else
-                [gsps(i,:), fobj_gs(i), mlps(i,:), fobj_ml(i), error_code(i), mcmcps(i,:,:)] = ThreeStageFittingVoxel(voxel, protocol, model);
-            end
+            [gsps(i,:), fobj_gs(i), mlps(i,:), fobj_ml(i), error_code(i), mcmcps(i,:,:)] = ThreeStageFittingVoxel(voxel, protocol, model);
         end
         
         % report to the progress monitor
@@ -135,3 +127,4 @@ end
 
 % close the parallel pool
 delete pool;
+
