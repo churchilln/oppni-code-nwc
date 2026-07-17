@@ -21,7 +21,7 @@ end
 
 PipeStruct.BREF = 'PROX1'; % just uses first-in-run (fwd) and last-in-run (rev)
 PipeStruct.TOPUP   = 'ON'; % apply topup
-PipeStruct.NODDI = 'OFF';
+PipeStruct.NODDI = 'ON';
 PipeStruct.NODDI_POOLSIZE = 4;
 %PipeStruct.TOPUP   = 'OFF';
 
