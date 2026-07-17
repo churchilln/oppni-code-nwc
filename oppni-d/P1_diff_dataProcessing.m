@@ -22,6 +22,7 @@ end
 PipeStruct.BREF = 'PROX1'; % just uses first-in-run (fwd) and last-in-run (rev)
 PipeStruct.TOPUP   = 'ON'; % apply topup
 PipeStruct.NODDI = 'OFF';
+PipeStruct.NODDI_POOLSIZE = 4;
 %PipeStruct.TOPUP   = 'OFF';
 
 %% ========= PHASE ZERO GO ========= %%
@@ -493,7 +494,7 @@ for ns=subj_list_for_proc % step through
         % make model
         noddi = MakeModel('WatsonSHStickTortIsoV_B0');
         % batch fitting, all brain voxels
-        batch_fitting_single([opath4,'/DTI_Multi_ROI.mat'], protocol, noddi, [opath4,'/paramFit.mat']);
+        batch_fitting([opath4,'/DTI_Multi_ROI.mat'], protocol, noddi, [opath4,'/paramFit.mat'], PipeStruct.NODDI_POOLSIZE);
         % store as nifti file
         SaveParamsAsNIfTI([opath4,'/paramFit.mat'],[opath4,'/DTI_Multi_ROI.mat'],sprintf('%s/tmpmsk.nii',opath4),[opath4,'/NODDI_fit']);
     else
