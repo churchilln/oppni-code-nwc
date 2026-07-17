@@ -59,7 +59,7 @@ cax = M.hdr.hist.qoffset_z + f(1)*M.hdr.dime.pixdim(4);
 hsz = (f(end)-f(1))*M.hdr.dime.pixdim(4);
 zsz = (hsz - HtMeanSd(1))/HtMeanSd(2);
 if normcdf( -abs(zsz) )*2 < alpha
-    error('autoclip lastpass -- found abnormal size of h=%d mm, outside of normal range at z=%f\n',hsz,zsz);
+    warning('autoclip lastpass -- found abnormal size of h=%d mm, outside of normal range at z=%f\n',hsz,zsz);
 end
 unix(sprintf('@clip_volume -input __opptmp_autoclip_anat.nii.gz -below %.02f -prefix __opptmp_autoclip_anat_clp3.nii.gz', cax(1) ));
 unix('rm __opptmp_autoclip_anat_seg.nii* __opptmp_autoclip_anat_seg_mask.nii*');
