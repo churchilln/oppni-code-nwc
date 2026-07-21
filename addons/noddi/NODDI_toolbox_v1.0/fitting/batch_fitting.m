@@ -42,16 +42,32 @@ end
 % initiate the parallel environment if necessary
 pool = gcp('nocreate');
 if	isempty(pool)
+    % Use storage private to this Slurm allocation.  Combined with MATLAB's
+    % per-job -prefdir, this avoids broken shared preferences and collisions
+    % between simultaneous local pools.
+    job_tmpdir = getenv('SLURM_TMPDIR');
+    if isempty(job_tmpdir)
+        job_tmpdir = tempdir;
+    end
+    job_storage = fullfile(job_tmpdir, 'matlab_job_storage');
+    if ~exist(job_storage, 'dir')
+        mkdir(job_storage);
+    end
+    cluster = parcluster('local');
+    cluster.JobStorageLocation = job_storage;
     if (nargin < 5)
-        pool = parpool('local');
+        pool = parpool(cluster);
     else
-        pool = parpool('local', poolsize);
+        pool = parpool(cluster, poolsize);
     end
 end
 
-% load the roi file
-load(roifile);
-numOfVoxels = size(roi,1);
+% Load the ROI field explicitly and give it an unambiguous variable name
+% before entering PARFOR.  MATLAB otherwise resolves `roi` as a function on
+% the worker path instead of the matrix from the MAT file.
+loaded_roi = load(roifile, 'roi');
+roi_data = loaded_roi.roi;
+numOfVoxels = size(roi_data,1);
 
 % set up the fitting parameter variables if it is the first run
 if current_split_start == 1
@@ -89,7 +105,7 @@ for split_start=current_split_start:progressStepSize:numOfVoxels
     parfor i=split_start:split_end
         
         % get the MR signals for the voxel i
-        voxel = roi(i,:)';
+        voxel = roi_data(i,:)';
         
         % fit the voxel
         if( ~isfinite(sum(voxel(:))) || (mean(voxel(:)<0)>0.80) ) %%% case of non-finite inputs, or mostly zero...
