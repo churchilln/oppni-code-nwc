@@ -24,6 +24,13 @@ PipeStruct.TOPUP   = 'ON'; % apply topup
 PipeStruct.NODDI = 'ON';
 PipeStruct.NODDI_FIT = 'PARALLEL';
 PipeStruct.NODDI_POOLSIZE = 4;
+noddi_override = upper(strtrim(getenv('OPPNI_NODDI')));
+if ~isempty(noddi_override)
+    if ~ismember(noddi_override, {'ON','OFF'})
+        error('OPPNI_NODDI must be ON or OFF, not %s', noddi_override);
+    end
+    PipeStruct.NODDI = noddi_override;
+end
 %PipeStruct.TOPUP   = 'OFF';
 
 %% ========= PHASE ZERO GO ========= %%
