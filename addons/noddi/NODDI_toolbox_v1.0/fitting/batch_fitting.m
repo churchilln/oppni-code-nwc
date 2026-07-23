@@ -81,13 +81,19 @@ if current_split_start == 1
     end
 end
 
-% set up the PARFOR Progress Monitor
-[mypath myname myext] = fileparts(mfilename('fullpath'));
-mypath = [mypath '/../ParforProgMonv2/java'];
-pctRunOnAll(['javaaddpath '  mypath]);
 progressStepSize = 100;
-ppm = ParforProgMon(['Fitting ' roifile, ' : '], numOfVoxels-current_split_start+1,...
-                    progressStepSize, 400, 80);
+% ParforProgMon opens a Java/AWT window.  Compute Canada workers are
+% headless, so disable the monitor there while retaining the parfor work.
+use_progress_monitor = isempty(getenv('SLURM_JOB_ID')) && ...
+                       ~isempty(getenv('DISPLAY'));
+if use_progress_monitor
+    [mypath, ~, ~] = fileparts(mfilename('fullpath'));
+    mypath = [mypath '/../ParforProgMonv2/java'];
+    pctRunOnAll(['javaaddpath ' mypath]);
+    ppm = ParforProgMon(['Fitting ' roifile, ' : '], ...
+                         numOfVoxels-current_split_start+1, ...
+                         progressStepSize, 400, 80);
+end
 
 tic
 
@@ -122,8 +128,8 @@ for split_start=current_split_start:progressStepSize:numOfVoxels
             end
         end
         
-        % report to the progress monitor
-        if mod(i, progressStepSize)==0
+        % Report only when a graphical monitor is available.
+        if use_progress_monitor && mod(i, progressStepSize)==0
             ppm.increment();
         end
         
@@ -140,7 +146,9 @@ end
 
 toc
 
-ppm.delete();
+if use_progress_monitor
+    ppm.delete();
+end
 
 % save the fitted parameters
 if model.noOfStages == 2
