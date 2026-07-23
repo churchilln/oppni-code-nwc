@@ -86,6 +86,8 @@ progressStepSize = 100;
 % headless, so disable the monitor there while retaining the parfor work.
 use_progress_monitor = isempty(getenv('SLURM_JOB_ID')) && ...
                        ~isempty(getenv('DISPLAY'));
+
+ppm = [];                  
 if use_progress_monitor
     [mypath, ~, ~] = fileparts(mfilename('fullpath'));
     mypath = [mypath '/../ParforProgMonv2/java'];
