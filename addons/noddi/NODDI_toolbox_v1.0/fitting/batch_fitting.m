@@ -160,4 +160,4 @@ else
 end
 
 % close the parallel pool
-delete pool;
+delete(pool);
