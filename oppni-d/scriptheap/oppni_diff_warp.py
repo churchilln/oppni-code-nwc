@@ -132,7 +132,12 @@ def make_clean_fa(
     tbss_input = temp_tbss_dir / f"{subject_id}_FA.nii.gz"
     shutil.copy2(native_fa, tbss_input)
 
-    run_command([tbss_preproc, tbss_input.name], log_file, temp_tbss_dir, env)
+    run_command(
+    ["bash", "-x", tbss_preproc, tbss_input.name],
+    log_file,
+    temp_tbss_dir,
+    env,
+)
 
     clean_fa = temp_tbss_dir / "FA" / f"{subject_id}_FA_FA.nii.gz"
     if not clean_fa.is_file():
