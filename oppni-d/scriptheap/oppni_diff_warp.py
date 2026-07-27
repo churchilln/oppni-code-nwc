@@ -21,11 +21,17 @@ DKI_SCALAR_NAMES = (
     "dtifit_ms_kurt3.nii.gz",
     "dtifit_ms_S0.nii.gz",
 )
+NODDI_SCALAR_NAMES = (
+    "NODDI_fit_ficvf.nii",
+    "NODDI_fit_fiso.nii",
+    "NODDI_fit_odi.nii",
+    "NODDI_fit_kappa.nii",
+)
 
 
 # parse subject and template inputs supplied by MATLAB
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Warp OPPNI-D DTI/DKI scalar maps.")
+    parser = argparse.ArgumentParser(description="Warp OPPNI-D DTI/DKI/NODDI scalar maps.")
     parser.add_argument("--subject-dir", required=True, type=Path)
     parser.add_argument("--template", required=True, type=Path)
     parser.add_argument("--threads", type=int, default=4)
@@ -95,6 +101,19 @@ def find_dki_scalars(dki_dir: Path) -> list[Path]:
     if not dki_dir.is_dir():
         return []
     return [path.resolve() for name in DKI_SCALAR_NAMES for path in sorted(dki_dir.glob(name))]
+
+
+# select NODDI scalar maps; exclude fitting, temporary and direction outputs
+def find_noddi_scalars(noddi_dir: Path) -> list[Path]:
+    if not noddi_dir.is_dir():
+        return []
+
+    scalar_maps = []
+    for name in NODDI_SCALAR_NAMES:
+        image = noddi_dir / name
+        if image.is_file():
+            scalar_maps.append(image.resolve())
+    return scalar_maps
 
 
 def make_clean_fa(
@@ -171,6 +190,7 @@ def main() -> int:
     p2_dir = subject_dir / "diff_proc_p2"
     dti_dir = p2_dir / "dti"
     dki_dir = p2_dir / "dki"
+    noddi_dir = p2_dir / "noddi"
     native_fa = dti_dir / "dtifit_1_FA.nii.gz"
 
     if not p2_dir.is_dir():
@@ -227,17 +247,28 @@ def main() -> int:
 
     # apply the FA-derived transform to scalar model outputs
     template_label = nii_stem(template)
-    warped_outputs: dict[str, list[str]] = {"dti": [], "dki": []}
+    warped_outputs: dict[str, list[str]] = {"dti": [], "dki": [], "noddi": []}
 
     for input_image in find_dti_scalars(dti_dir):
         output_image = dti_dir / "warped" / f"{nii_stem(input_image)}_{template_label}.nii.gz"
         apply_ants_transform(input_image, output_image, template, warp, affine, log_file, env, ants_apply)
         warped_outputs["dti"].append(str(output_image))
 
-    for input_image in find_dki_scalars(dki_dir):
+    dki_maps = find_dki_scalars(dki_dir)
+    if not dki_maps:
+        print(f"no DKI scalar maps were found in: {dki_dir}")
+    for input_image in dki_maps:
         output_image = dki_dir / "warped" / f"{nii_stem(input_image)}_{template_label}.nii.gz"
         apply_ants_transform(input_image, output_image, template, warp, affine, log_file, env, ants_apply)
         warped_outputs["dki"].append(str(output_image))
+
+    noddi_maps = find_noddi_scalars(noddi_dir)
+    if not noddi_maps:
+        print(f"no NODDI scalar maps were found in: {noddi_dir}")
+    for input_image in noddi_maps:
+        output_image = noddi_dir / "warped" / f"{nii_stem(input_image)}_{template_label}.nii.gz"
+        apply_ants_transform(input_image, output_image, template, warp, affine, log_file, env, ants_apply)
+        warped_outputs["noddi"].append(str(output_image))
 
     if not warped_outputs["dti"]:
         raise RuntimeError(f"no DTI scalar maps were found in: {dti_dir}")
@@ -262,6 +293,7 @@ def main() -> int:
     print(f"alignment: {align_dir}")
     print(f"DTI warped outputs: {dti_dir / 'warped'}")
     print(f"DKI warped outputs: {dki_dir / 'warped'}")
+    print(f"NODDI warped outputs: {noddi_dir / 'warped'}")
     return 0
 
 
