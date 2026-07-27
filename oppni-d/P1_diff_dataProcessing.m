@@ -500,6 +500,10 @@ for ns=subj_list_for_proc % step through
         end
     end
     if strcmpi(PipeStruct.NODDI,'ON') && numel(nvol_fwd)>1 && ~exist([opath4,'/NODDI_fit_odi.nii'],'file') %noddi
+        % Remove stale decompressed intermediates before gunzip. Otherwise
+        % gunzip prompts on shared storage and leaves the Slurm job waiting.
+        unix(sprintf('rm -f %s/tmpnii.nii %s/tmpnii.nii.gz %s/tmpmsk.nii %s/tmpmsk.nii.gz', ...
+            opath4, opath4, opath4, opath4));
         unix(sprintf('cp %s/eddy_unwarp.eddy_outlier_free_data.nii.gz %s/tmpnii.nii.gz',opath2,opath4));
         unix(sprintf('gunzip %s/tmpnii.nii.gz',opath4));
         unix(sprintf('cp %s/refavg_brain_mask.nii.gz %s/tmpmsk.nii.gz',opath1,opath4));
