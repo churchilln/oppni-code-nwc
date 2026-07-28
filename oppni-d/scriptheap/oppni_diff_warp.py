@@ -216,6 +216,7 @@ def main() -> int:
     qc_dir.mkdir(parents=True, exist_ok=True)
 
     env = os.environ.copy()
+    env.pop("LD_LIBRARY_PATH", None)
     env["ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS"] = str(max(1, args.threads))
 
     clean_fa = make_clean_fa(native_fa, subject_id, temp_tbss_dir, log_file, env, tbss_preproc)
