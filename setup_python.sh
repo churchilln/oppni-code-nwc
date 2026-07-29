@@ -11,4 +11,4 @@ if [[ ! -x "$VENV/bin/python" ]]; then
 fi
 
 "$VENV/bin/python" -m pip install -r "$REQ"
-"$VENV/bin/python" -c "from deepbet import run_bet; import nibabel"
+"$VENV/bin/python" -c "from deepbet import run_bet"
