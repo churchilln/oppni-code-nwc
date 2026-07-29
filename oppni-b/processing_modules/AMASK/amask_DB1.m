@@ -33,12 +33,21 @@ if ~exist( sprintf('%s/anatBrainMask.nii.gz',odir) ,'file')
     end
 
     module_path = fileparts(mfilename('fullpath'));
+    OPPNI_ROOT = fullfile(module_path,'..','..','..');
+    python_bin = fullfile(OPPNI_ROOT,'.venv','bin','python');
     helper = fullfile(module_path,'run_deepbet_amask.py');
     if ~exist(helper,'file')
         error('cannot find DeepBET helper');
     end
+    if ~exist(python_bin,'file')
+        error('OPPNI Python environment is missing. Run this from the OPPNI root: bash setup_python.sh');
+    end
+    [istat,imsg] = unix(sprintf('"%s" -c "from deepbet import run_bet"',python_bin));
+    if istat~=0
+        error('DeepBET is missing from the OPPNI Python environment. Run this from the OPPNI root: bash setup_python.sh\n%s',imsg);
+    end
 
-    [dstat,dmsg] = unix(sprintf('python3 %s --input %s --brain %s/deepbet_brain.nii.gz --mask %s/deepbet_mask.nii.gz',helper,Adataset,pref,pref));
+    [dstat,dmsg] = unix(sprintf('"%s" "%s" --input "%s" --brain "%s/deepbet_brain.nii.gz" --mask "%s/deepbet_mask.nii.gz"',python_bin,helper,Adataset,pref,pref));
     if dstat~=0
         error('deepbet_mask failure:\n%s',dmsg)
     end
