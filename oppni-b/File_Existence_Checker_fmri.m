@@ -93,8 +93,7 @@ elseif stage==1
         if ~exist(sprintf('%s/anat%u.nii',opath0,nr),'file') && ~exist(sprintf('%s/anat%u.nii.gz',opath0,nr),'file')
             error('%sExpected to find raw data anat file but did not:\n\t%s\n', lstr, sprintf('%s/anat%u.nii(.gz)',opath0,nr) );
         end
-        if ( (ischar(InputStruct(ns).arun(nr).ZCLIP_thr) && strcmpi(InputStruct(ns).arun(nr).ZCLIP_thr,'AUTO')) || ... % either auto-clip or specified numeric value
-           (isnumeric(InputStruct(ns).arun(nr).ZCLIP_thr) && isfinite(InputStruct(ns).arun(nr).ZCLIP_thr)) ) && ...
+        if (isnumeric(InputStruct(ns).arun(nr).ZCLIP_thr) && isfinite(InputStruct(ns).arun(nr).ZCLIP_thr)) && ...
             ~exist(sprintf('%s/anat%u_zclip.nii',opath0,nr),'file') && ...
             ~exist(sprintf('%s/anat%u_zclip.nii.gz',opath0,nr),'file')
             error('%sExpected to find raw data anat file but did not:\n\t%s\n', lstr, sprintf('%s/anat%u_zclip.nii(.gz)',opath0,nr) );

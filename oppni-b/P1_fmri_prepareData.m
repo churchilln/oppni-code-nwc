@@ -82,11 +82,7 @@ for ns=1:numel(subject_list)
         end
         % > minimal proc: z-axis clipping
         if ischar(InputStruct_ssa.arun(nr).ZCLIP_thr) && strcmpi(InputStruct_ssa.arun(nr).ZCLIP_thr,'AUTO')
-            if ~exist(sprintf('%s/anat%u_zclip.nii.gz',opath0,nr),'file')
-                zval = autoclipper( sprintf('%s/anat%u.nii.gz',opath0,nr) );
-                unix(sprintf('@clip_volume -input %s/anat%u.nii.gz -below %.02f -prefix %s/anat%u_zclip.nii.gz', ...
-                    opath0,nr, [zval],opath0,nr));
-            end
+            warning('ZCLIP=AUTO is deprecated; skipping. Use numeric ZCLIP for manual clipping.');
         elseif isnumeric(InputStruct_ssa.arun(nr).ZCLIP_thr) && isfinite(InputStruct_ssa.arun(nr).ZCLIP_thr)
             if ~exist(sprintf('%s/anat%u_zclip.nii.gz',opath0,nr),'file')
                 unix(sprintf('@clip_volume -input %s/anat%u.nii.gz -below %.02f -prefix %s/anat%u_zclip.nii.gz', ...
