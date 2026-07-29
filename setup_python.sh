@@ -6,6 +6,8 @@ VENV="$OPPNI_ROOT/.venv"
 REQ="$OPPNI_ROOT/requirements.txt"
 PYTHON_BIN="${PYTHON:-python3}"
 
+unset PYTHONPATH
+
 if [[ ! -x "$VENV/bin/python" ]]; then
     "$PYTHON_BIN" -m venv "$VENV"
 fi
