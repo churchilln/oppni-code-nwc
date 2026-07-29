@@ -14,3 +14,5 @@ fi
 
 "$VENV/bin/python" -m pip install -r "$REQ"
 "$VENV/bin/python" -c "from deepbet import run_bet"
+
+echo "OPPNI Python setup complete."
