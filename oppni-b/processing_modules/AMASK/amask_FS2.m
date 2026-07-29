@@ -1,6 +1,6 @@
-function amask_SS1(Adataset, Basedset, odir, ParamCell)
+function amask_FS2(Adataset, Basedset, odir, ParamCell)
 %
-% .amask_SS1:
+% .amask_FS2:
 % .anatomical masking using FreeSurfer SynthStrip
 
 if isempty(ParamCell) || isempty(ParamCell{1})
