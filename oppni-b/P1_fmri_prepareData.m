@@ -71,7 +71,19 @@ for ns=1:numel(subject_list)
             end
         end
         % gathering information for qc compatibility stats
-        hdr = load_nii_hdr(sprintf('%s/anat%u.nii',opath0,nr));
+        V=load_untouch_niiz(sprintf('%s/anat%u.nii',opath0,nr));
+        %
+        QCStruct_compat(ns).arun(nr).signal_range =[min(V.img(:)) max(V.img(:))];
+        signal_min = min(V.img(:));
+        signal_max = max(V.img(:));
+        QCStruct_compat(ns).arun(nr).signal_adjust = signal_min < 0;
+        if signal_min < 0 && signal_max > signal_min
+            %... adjust
+            disp('negative intensity values found - rescaling to range 0...4095');
+            V.img = 4095 * (V.img - signal_min) ./ (signal_max - signal_min);
+            save_untouch_niiz(V,sprintf('%s/anat%u.nii',opath0,nr));
+        end
+        hdr=V.hdr;
         % now zippit
         unix(sprintf('gzip %s/anat%u.nii',opath0,nr));
         % orientation info
@@ -114,7 +126,16 @@ for ns=1:numel(subject_list)
             end
         end
         % gathering information for qc compatibility stats
-        hdr      = load_nii_hdr(sprintf('%s/func%u.nii',opath0,nr));
+        V = load_untouch_niiz(sprintf('%s/func%u.nii', opath0, nr));
+        func_min = min(V.img(:));
+        func_max = max(V.img(:));
+        QCStruct_compat(ns).frun(nr).signal_range = [func_min func_max];
+        if isa(V.img, 'int16') && func_min < 0
+            warning('P1_fmri_prepareData:NegativeFunctionalIntensities', ...
+                'Functional data contains negative int16 intensities: %s/func%u.nii', ...
+                opath0, nr);
+        end
+        hdr = V.hdr;
         % now zippit
         unix(sprintf('gzip %s/func%u.nii',opath0,nr));
         % time info
