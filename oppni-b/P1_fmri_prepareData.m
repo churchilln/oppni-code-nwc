@@ -74,13 +74,13 @@ for ns=1:numel(subject_list)
         V=load_untouch_niiz(sprintf('%s/anat%u.nii',opath0,nr));
         %
         QCStruct_compat(ns).arun(nr).signal_range =[min(V.img(:)) max(V.img(:))];
-        signal_min = min(V.img(:));
-        signal_max = max(V.img(:));
+        signal_min = double(min(V.img(:)));
+        signal_max = double(max(V.img(:)));
         QCStruct_compat(ns).arun(nr).signal_adjust = signal_min < 0;
         if signal_min < 0 && signal_max > signal_min
             %... adjust
             disp('negative intensity values found - rescaling to range 0...4095');
-            V.img = 4095 * (V.img - signal_min) ./ (signal_max - signal_min);
+            V.img = 4095 * (double(V.img) - signal_min) ./ (signal_max - signal_min);
             save_untouch_niiz(V,sprintf('%s/anat%u.nii',opath0,nr));
         end
         hdr=V.hdr;
