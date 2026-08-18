@@ -1,4 +1,4 @@
-function P4_fmri_group_level_analysis( inputfile, pipelinefile, paramlist, outpath, param, volno, design_mat, analysis_model, model_contrast, THRESH_METHOD, out_folder_name, censor, ROIvol )
+function P4_fmri_group_level_analysis( inputfile, pipelinefile, paramlist, outpath, param, volno, design_mat, analysis_model, model_contrast, THRESH_METHOD, out_folder_name, censor, ROIvol, mode )
 %
 % Input:
 %
@@ -72,6 +72,13 @@ function P4_fmri_group_level_analysis( inputfile, pipelinefile, paramlist, outpa
 
 
 % initializing structure and running checkes
+if nargin<14 || isempty(mode)
+    mode = 'normal';
+elseif ~strcmpi(mode,'normal') && ~strcmpi(mode,'headless')
+    error('Invalid mode specified. Please use ''normal'' or ''headless''.');
+end
+do_plots = ~strcmpi(mode,'headless');
+
 if strcmpi(pipelinefile,'noproc')
 [subject_list, ~, PipeStruct_aug, ParamStruct_aug] = P0_fmri_populateDirectories_noproc( inputfile, paramlist, outpath );
 else
@@ -139,8 +146,10 @@ for i=1:numel(subject_list)
             kepix = find( roivol(subMaskS_tmp>0)>0 );
 
             tmp = maskS + subMaskS_tmp + subMaskS;
-            axial_plot( tmp(maskS>0)+0.5, maskS, 6, [0 3], 1 ); colormap jet;
-            title('-- ROI masks --')
+            if do_plots
+                axial_plot( tmp(maskS>0)+0.5, maskS, 6, [0 3], 1 ); colormap jet;
+                title('-- ROI masks --')
+            end
         else
             subMaskS = subMaskS_tmp;
             kepix = 1:sum(subMaskS(:));
@@ -407,23 +416,29 @@ fprintf('=========================================================\n\n');
 
 fprintf('\n=========================================================\n');
     
-    figure;
-    dtmp = D2 - mean(D2,2);
-    subplot(2,3,1); imagesc( dtmp ); title('mean-centered')
-    dtmp = dtmp./std(dtmp,0,2);
-    subplot(2,3,2); imagesc( dtmp ); title('var-normed')
-    dtmp = dtmp.^2;
-    subplot(2,3,3); imagesc( dtmp ); title('squared deviation')
+    if do_plots
+        figure;
+        dtmp = D2 - mean(D2,2);
+        subplot(2,3,1); imagesc( dtmp ); title('mean-centered')
+        dtmp = dtmp./std(dtmp,0,2);
+        subplot(2,3,2); imagesc( dtmp ); title('var-normed')
+        dtmp = dtmp.^2;
+        subplot(2,3,3); imagesc( dtmp ); title('squared deviation')
+    end
     
     dif = bsxfun(@minus,D2,mean(D2,2,'omitnan')).^2; % deviation from mean map
     outl = mean(dif,1)';                       % mean deviation (averaging over voxels)
     outl = outl./max(outl);                    % renorming deviation
-    subplot(2,3,4); bar( outl ); ylim( [0 1.01]);
-    title('rms-deviation (big value=probable outlier)');
+    if do_plots
+        subplot(2,3,4); bar( outl ); ylim( [0 1.01]);
+        title('rms-deviation (big value=probable outlier)');
+    end
     PARMHAT = gamfit(outl(isfinite(outl)));    % gamma distribution fitting 
     Pgam = gamcdf(outl,PARMHAT(1),PARMHAT(2)); % probability on gammas
-    subplot(2,3,5); bar( 1-Pgam(isfinite(outl)) ); ylim( [0 0.05]);
-    title('rms-dev p-value (small value=probable outlier)');
+    if do_plots
+        subplot(2,3,5); bar( 1-Pgam(isfinite(outl)) ); ylim( [0 0.05]);
+        title('rms-dev p-value (small value=probable outlier)');
+    end
     [p th]=fdr(1-Pgam,'p',0.05,0);             % signifiant outliers FDR=0.05
     if sum(th)<=0
         fprintf('no significant outlier volumes!\n');
@@ -433,14 +448,16 @@ fprintf('\n=========================================================\n');
         strtmp = [];
         for i=1:numel(fith)
             strtmp = [strtmp ', ', subject_list{fith(i)}];
-            if strcmpi( param_type,'image' )
-                axial_plot( dtmp(:,fith(i)), subMaskS, 6, 2, 1 ); colormap jet;
-            elseif strcmpi( param_type,'mat2d' )
-                figure,imagesc( reshape(dtmp(:,fith(i)), matdims) ); colormap jet;
-            else
-                error('unrecognized type...')
+            if do_plots
+                if strcmpi( param_type,'image' )
+                    axial_plot( dtmp(:,fith(i)), subMaskS, 6, 2, 1 ); colormap jet;
+                elseif strcmpi( param_type,'mat2d' )
+                    figure,imagesc( reshape(dtmp(:,fith(i)), matdims) ); colormap jet;
+                else
+                    error('unrecognized type...')
+                end
+                title(['outlier volume: ' subject_list{fith(i)}])
             end
-            title(['outlier volume: ' subject_list{fith(i)}])
         end
         fprintf('   %s\n',strtmp(3:end))
     end
@@ -580,26 +597,32 @@ elseif strcmpi( analysis_model, 'LME' )
 
 elseif strcmpi( analysis_model, 'PCA' )
 
-    figure,imagesc( zscore(X2')',[-3.5 3.5]); colormap jet;
+    if do_plots
+        figure,imagesc( zscore(X2')',[-3.5 3.5]); colormap jet;
+    end
 
     [u,l,v] = svd( X2,'econ' );
 
-    figure,
-    subplot(2,2,1); bar( diag(l.^2)./trace(l.^2) ); title('design matrix')
-    subplot(2,2,2); plot( u(:,1), u(:,2), 'ok', 'markerfacecolor',[0.5 0.5 0.5] )
-    subplot(2,2,3); bar( u(:,1:2) );
-    subplot(2,2,4); bar( v(:,1:2) );
+    if do_plots
+        figure,
+        subplot(2,2,1); bar( diag(l.^2)./trace(l.^2) ); title('design matrix')
+        subplot(2,2,2); plot( u(:,1), u(:,2), 'ok', 'markerfacecolor',[0.5 0.5 0.5] )
+        subplot(2,2,3); bar( u(:,1:2) );
+        subplot(2,2,4); bar( v(:,1:2) );
+    end
 
     [u,l,v] = svd( D2,'econ' );
 
-    figure,
-    subplot(2,2,1); bar( diag(l.^2)./trace(l.^2) ); title('design matrix')
-    subplot(2,2,2); plot( v(:,1), v(:,2), 'ok', 'markerfacecolor',[0.5 0.5 0.5] )
-    subplot(2,2,3); bar( v(:,1:2) );
-    subplot(2,2,3); bar( v(:,1:2) );
-    subplot(2,2,4); bar( u(:,1:2) );
-    axial_plot( u(:,1), maskS, 6, 1, 1 );
-    axial_plot( u(:,2), maskS, 6, 1, 1 );
+    if do_plots
+        figure,
+        subplot(2,2,1); bar( diag(l.^2)./trace(l.^2) ); title('design matrix')
+        subplot(2,2,2); plot( v(:,1), v(:,2), 'ok', 'markerfacecolor',[0.5 0.5 0.5] )
+        subplot(2,2,3); bar( v(:,1:2) );
+        subplot(2,2,3); bar( v(:,1:2) );
+        subplot(2,2,4); bar( u(:,1:2) );
+        axial_plot( u(:,1), maskS, 6, 1, 1 );
+        axial_plot( u(:,2), maskS, 6, 1, 1 );
+    end
 
     disp('---just plotting for now---');
     return;
@@ -789,7 +812,7 @@ if strcmpi(ROImode,'avg')
     for i=1:size(tmaps,2)
 
 %%          %--- plotting stage: to be augmented later ---%
-        figure, 
+        if do_plots, figure; end
 
         % -- resetting model contast vector
         if isempty(model_contrast)
@@ -801,7 +824,7 @@ if strcmpi(ROImode,'avg')
         fprintf('\npredictor #%u=%s, ROI effects\n\t\t\t> mean(SE): %.03f(%.03f),  95pct-CI: [%.03f, %.03f] (p=%.03f),  BSR: %.03f\n',i,model_contrast{i},...
             odisp.av./gmean, odisp.se./gmean, odisp.ci./gmean, odisp.pp, odisp.av/odisp.se)
 
-        if ~isempty(xnp)
+        if ~isempty(xnp) && do_plots
             subplot(1,2,1); hold on; title(sprintf('predictor #%u=%s, ROI effects',i,model_contrast{i}));
 
             if is_interact(i)==0
@@ -887,7 +910,7 @@ else
             xp=xp(:);
 
 %%          %--- plotting stage: to be augmented later ---%
-            figure, 
+            if do_plots, figure; end
 
             % -- resetting model contast vector
             if isempty(model_contrast)
@@ -895,7 +918,7 @@ else
                 is_interact = 0;
             end            
 
-            if ~isempty(xn)
+            if ~isempty(xn) && do_plots
                 subplot(1,2,1); hold on; title(sprintf('predictor #%u=%s, Neg. effects',i,model_contrast{i}));
 
                 if is_interact(i)==0
@@ -929,7 +952,7 @@ else
                     end
                 end
             end
-            if ~isempty(xp)
+            if ~isempty(xp) && do_plots
                 subplot(1,2,2); hold on; title(sprintf('predictor #%u=%s, Pos. effects',i,model_contrast{i}));
 
                 if is_interact(i)==0
