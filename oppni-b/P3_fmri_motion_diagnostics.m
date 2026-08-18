@@ -1,4 +1,4 @@
-function P3_fmri_motion_diagnostics( inputfile, pipelinefile, paramlist, outpath, qc_subj_idxes )
+function P3_fmri_motion_diagnostics( inputfile, pipelinefile, paramlist, outpath, qc_subj_idxes, mode )
 %
 
 % declaring path
@@ -10,6 +10,10 @@ end
 if nargin<5
     qc_subj_idxes=[];
 end
+if nargin<6 || isempty(mode)
+    mode = 'normal';
+end
+do_plots = ~strcmpi(mode,'headless');
 
 % initializing structure and running checkes
 [subject_list, InputStruct_aug, PipeStruct_aug, ParamStruct_aug] = P0_fmri_populateDirectories( inputfile, pipelinefile, paramlist, outpath );
@@ -317,9 +321,11 @@ abar(:,4) = sum(out.thr(:,[14:17]),2);
 abar(:,5) = sum(out.thr(:,[18:19]),2);
 abar(:,6) = sum(out.thr(:,[20:22]),2);
 abar(:,7) = sum(out.thr(:,[   23]),2);
-figure, bar( abar,'stacked' ); ylim([0 10]);
-title('outlier counts - functional data');
-legend(legcell);
+if do_plots
+    figure, bar( abar,'stacked' ); ylim([0 10]);
+    title('outlier counts - functional data');
+    legend(legcell);
+end
 
 ix = find( sum(abar,2)>0 );
 
@@ -369,9 +375,11 @@ clear abar; legcell = {'vol/shape','segment','sig-scal'};
 abar(:,1) = sum(out.thr(:,[ 1: 4]),2);
 abar(:,2) = sum(out.thr(:,[ 5: 7]),2);
 abar(:,3) = sum(out.thr(:,[ 8: 9]),2);
-figure, bar( abar,'stacked' ); ylim([0 10]);
-title('outlier counts - structural data');
-legend(legcell);
+if do_plots
+    figure, bar( abar,'stacked' ); ylim([0 10]);
+    title('outlier counts - structural data');
+    legend(legcell);
+end
 
 ix = find( sum(abar,2)>0 );
 
