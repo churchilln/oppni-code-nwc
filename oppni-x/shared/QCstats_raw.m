@@ -179,7 +179,7 @@ for ns=1:NSmax % step thru subjects
                 
                     V0 = load_untouch_niiz(sprintf('%s/deriv/img%u_deob.nii.gz',opath0,nr));
                     M0 = load_untouch_niiz(sprintf('%s/deriv/img%u_brmask_bin.nii.gz',opath0,nr));
-                    V0.img = double(V0.img .* M0.img);
+                    V0.img = double(V0.img) .* double(M0.img);
                     save_untouch_niiz(V0,sprintf('%s/deriv/img%u_masked.nii.gz',opath0,nr));
             
                     unix(sprintf('fast -R 0.3 -H 0.1 -t 1 %s/deriv/img%u_masked.nii.gz',opath0,nr));
