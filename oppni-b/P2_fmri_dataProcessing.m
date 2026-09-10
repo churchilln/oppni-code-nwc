@@ -219,7 +219,7 @@ for ns=subj_list_for_proc % step through anat-proc, func-proc (block-1)
     nr=1; %-fixing to run=1 for now
 
     % tag for rawdata in case z-clipping was performed
-    if (ischar(InputStruct_ssa.arun(nr).ZCLIP_thr) && strcmpi(InputStruct_ssa.arun(nr).ZCLIP_thr,'AUTO')) || (isnumeric(InputStruct_ssa.arun(nr).ZCLIP_thr) && isfinite(InputStruct_ssa.arun(nr).ZCLIP_thr))
+    if isnumeric(InputStruct_ssa.arun(nr).ZCLIP_thr) && isfinite(InputStruct_ssa.arun(nr).ZCLIP_thr)
         zclip_tag = '_zclip';
     else
         zclip_tag = '';

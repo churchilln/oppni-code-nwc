@@ -21,6 +21,25 @@ end
 
 PipeStruct.BREF = 'PROX1'; % just uses first-in-run (fwd) and last-in-run (rev)
 PipeStruct.TOPUP   = 'ON'; % apply topup
+PipeStruct.NODDI = 'ON';
+PipeStruct.NODDI_FIT = 'PARALLEL';
+PipeStruct.NODDI_POOLSIZE = 4;
+PipeStruct.DIFF_WARP = 'OFF'; % warp DTI/DKI scalar maps to standard FA space
+noddi_override = upper(strtrim(getenv('OPPNI_NODDI')));
+if ~isempty(noddi_override)
+    if ~ismember(noddi_override, {'ON','OFF'})
+        error('OPPNI_NODDI must be ON or OFF, not %s', noddi_override);
+    end
+    PipeStruct.NODDI = noddi_override;
+end
+% optional post-fitting scalar warp
+diff_warp_override = upper(strtrim(getenv('OPPNI_DIFF_WARP')));
+if ~isempty(diff_warp_override)
+    if ~ismember(diff_warp_override, {'ON','OFF'})
+        error('OPPNI_DIFF_WARP must be ON or OFF, not %s', diff_warp_override);
+    end
+    PipeStruct.DIFF_WARP = diff_warp_override;
+end
 %PipeStruct.TOPUP   = 'OFF';
 
 %% ========= PHASE ZERO GO ========= %%
@@ -97,11 +116,7 @@ for ns=subj_list_for_proc % step through
         end
         % > minimal proc: z-axis clipping
         if ischar(InputStruct_ssa.arun(nr).ZCLIP_thr) && strcmpi(InputStruct_ssa.arun(nr).ZCLIP_thr,'AUTO')
-            if ~exist(sprintf('%s/anat%u_zclip.nii.gz',opath0,nr),'file')
-                zval = autoclipper( sprintf('%s/anat%u.nii.gz',opath0,nr) );
-                unix(sprintf('@clip_volume -input %s/anat%u.nii.gz -below %.02f -prefix %s/anat%u_zclip.nii.gz', ...
-                    opath0,nr, [zval],opath0,nr));
-            end
+            warning('ZCLIP=AUTO is deprecated; skipping. Use numeric ZCLIP for manual clipping.');
         elseif isnumeric(InputStruct_ssa.arun(nr).ZCLIP_thr) && isfinite(InputStruct_ssa.arun(nr).ZCLIP_thr)
             if ~exist(sprintf('%s/anat%u_zclip.nii.gz',opath0,nr),'file')
                 unix(sprintf('@clip_volume -input %s/anat%u.nii.gz -below %.02f -prefix %s/anat%u_zclip.nii.gz', ...
@@ -480,7 +495,11 @@ for ns=subj_list_for_proc % step through
             disp('skipping dti fitting! already done...')
         end
     end
-    if  numel(nvol_fwd)>1 && ~exist([opath4,'/NODDI_fit_odi.nii'],'file') %noddi
+    if strcmpi(PipeStruct.NODDI,'ON') && numel(nvol_fwd)>1 && ~exist([opath4,'/NODDI_fit_odi.nii'],'file') %noddi
+        % Remove stale decompressed intermediates before gunzip. Otherwise
+        % gunzip prompts on shared storage and leaves the Slurm job waiting.
+        unix(sprintf('rm -f %s/tmpnii.nii %s/tmpnii.nii.gz %s/tmpmsk.nii %s/tmpmsk.nii.gz', ...
+            opath4, opath4, opath4, opath4));
         unix(sprintf('cp %s/eddy_unwarp.eddy_outlier_free_data.nii.gz %s/tmpnii.nii.gz',opath2,opath4));
         unix(sprintf('gunzip %s/tmpnii.nii.gz',opath4));
         unix(sprintf('cp %s/refavg_brain_mask.nii.gz %s/tmpmsk.nii.gz',opath1,opath4));
@@ -492,7 +511,14 @@ for ns=subj_list_for_proc % step through
         % make model
         noddi = MakeModel('WatsonSHStickTortIsoV_B0');
         % batch fitting, all brain voxels
-        batch_fitting_single([opath4,'/DTI_Multi_ROI.mat'], protocol, noddi, [opath4,'/paramFit.mat']);
+        switch upper(PipeStruct.NODDI_FIT)
+            case 'PARALLEL'
+                batch_fitting([opath4,'/DTI_Multi_ROI.mat'], protocol, noddi, [opath4,'/paramFit.mat'], PipeStruct.NODDI_POOLSIZE);
+            case 'SINGLE'
+                batch_fitting_single([opath4,'/DTI_Multi_ROI.mat'], protocol, noddi, [opath4,'/paramFit.mat']);
+            otherwise
+                error('unrecognized NODDI fitting option: %s',PipeStruct.NODDI_FIT);
+        end
         % store as nifti file
         SaveParamsAsNIfTI([opath4,'/paramFit.mat'],[opath4,'/DTI_Multi_ROI.mat'],sprintf('%s/tmpmsk.nii',opath4),[opath4,'/NODDI_fit']);
     else
@@ -505,6 +531,16 @@ for ns=subj_list_for_proc % step through
             opath5,opath5,opath5,opath5,opath5));
     else
         disp('skipping dki fitting! already done...')
+    end
+    % optional FA-derived warp for DTI/DKI scalar outputs
+    if strcmpi(PipeStruct.DIFF_WARP,'ON')
+        fsldir = getenv('FSLDIR');
+        if isempty(fsldir)
+            error('FSLDIR must be set to run diffusion warp');
+        end
+        template_fa = fullfile(fsldir,'data','standard','FMRIB58_FA_1mm.nii.gz');
+        python_script = fullfile(CODE_PATH,'scriptheap','oppni_diff_warp.py');
+        run_diffusion_warp(fullfile(outpath,InputStruct_ssa.PREFIX),python_script,template_fa);
     end
 
 end

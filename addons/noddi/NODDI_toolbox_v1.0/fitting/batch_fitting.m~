@@ -42,32 +42,16 @@ end
 % initiate the parallel environment if necessary
 pool = gcp('nocreate');
 if	isempty(pool)
-    % Use storage private to this Slurm allocation.  Combined with MATLAB's
-    % per-job -prefdir, this avoids broken shared preferences and collisions
-    % between simultaneous local pools.
-    job_tmpdir = getenv('SLURM_TMPDIR');
-    if isempty(job_tmpdir)
-        job_tmpdir = tempdir;
-    end
-    job_storage = fullfile(job_tmpdir, 'matlab_job_storage');
-    if ~exist(job_storage, 'dir')
-        mkdir(job_storage);
-    end
-    cluster = parcluster('local');
-    cluster.JobStorageLocation = job_storage;
     if (nargin < 5)
-        pool = parpool(cluster);
+        pool = parpool('local');
     else
-        pool = parpool(cluster, poolsize);
+        pool = parpool('local', poolsize);
     end
 end
 
-% Load the ROI field explicitly and give it an unambiguous variable name
-% before entering PARFOR.  MATLAB otherwise resolves `roi` as a function on
-% the worker path instead of the matrix from the MAT file.
-loaded_roi = load(roifile, 'roi');
-roi_data = loaded_roi.roi;
-numOfVoxels = size(roi_data,1);
+% load the roi file
+load(roifile);
+numOfVoxels = size(roi,1);
 
 % set up the fitting parameter variables if it is the first run
 if current_split_start == 1
@@ -81,21 +65,13 @@ if current_split_start == 1
     end
 end
 
+% set up the PARFOR Progress Monitor
+[mypath myname myext] = fileparts(mfilename('fullpath'));
+mypath = [mypath '/../ParforProgMonv2/java'];
+pctRunOnAll(['javaaddpath '  mypath]);
 progressStepSize = 100;
-% ParforProgMon opens a Java/AWT window.  Compute Canada workers are
-% headless, so disable the monitor there while retaining the parfor work.
-use_progress_monitor = isempty(getenv('SLURM_JOB_ID')) && ...
-                       ~isempty(getenv('DISPLAY'));
-
-ppm = [];                  
-if use_progress_monitor
-    [mypath, ~, ~] = fileparts(mfilename('fullpath'));
-    mypath = [mypath '/../ParforProgMonv2/java'];
-    pctRunOnAll(['javaaddpath ' mypath]);
-    ppm = ParforProgMon(['Fitting ' roifile, ' : '], ...
-                         numOfVoxels-current_split_start+1, ...
-                         progressStepSize, 400, 80);
-end
+ppm = ParforProgMon(['Fitting ' roifile, ' : '], numOfVoxels-current_split_start+1,...
+                    progressStepSize, 400, 80);
 
 tic
 
@@ -113,25 +89,17 @@ for split_start=current_split_start:progressStepSize:numOfVoxels
     parfor i=split_start:split_end
         
         % get the MR signals for the voxel i
-        voxel = roi_data(i,:)';
+        voxel = roi(i,:)';
         
         % fit the voxel
-        if( ~isfinite(sum(voxel(:))) || (mean(voxel(:)<0)>0.80) ) %%% case of non-finite inputs, or mostly zero...
-            gsps(i,:) = NaN;
-            fobj_gs(i)= NaN;
-            mlps(i,:) = NaN;
-            fobj_ml(i)= NaN;
-            error_code(i)=NaN;
+        if model.noOfStages == 2
+            [gsps(i,:), fobj_gs(i), mlps(i,:), fobj_ml(i), error_code(i)] = ThreeStageFittingVoxel(voxel, protocol, model);
         else
-            if model.noOfStages == 2
-                [gsps(i,:), fobj_gs(i), mlps(i,:), fobj_ml(i), error_code(i)] = ThreeStageFittingVoxel(voxel, protocol, model);
-            else
-                [gsps(i,:), fobj_gs(i), mlps(i,:), fobj_ml(i), error_code(i), mcmcps(i,:,:)] = ThreeStageFittingVoxel(voxel, protocol, model);
-            end
+            [gsps(i,:), fobj_gs(i), mlps(i,:), fobj_ml(i), error_code(i), mcmcps(i,:,:)] = ThreeStageFittingVoxel(voxel, protocol, model);
         end
         
-        % Report only when a graphical monitor is available.
-        if use_progress_monitor && mod(i, progressStepSize)==0
+        % report to the progress monitor
+        if mod(i, progressStepSize)==0
             ppm.increment();
         end
         
@@ -148,9 +116,7 @@ end
 
 toc
 
-if use_progress_monitor
-    ppm.delete();
-end
+ppm.delete();
 
 % save the fitted parameters
 if model.noOfStages == 2
@@ -160,4 +126,5 @@ else
 end
 
 % close the parallel pool
-delete(pool);
+delete pool;
+
