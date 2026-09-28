@@ -1,6 +1,6 @@
-function fwarp_AN1( Funcfile_set, prefix_set, odir1, odir2, base_set, Anatloc, ParamCell )
+function fwarp_AN2( Funcfile_set, prefix_set, odir1, odir2, base_set, Anatloc, ParamCell )
 %
-% .awarp_AN2:
+% .fwarp_AN2:
 % .anatomical warping using ANTs utilities
 % .kludged together from some existing sample scripts! --> with a nonlinear option!
 
