@@ -76,7 +76,21 @@ if ~exist( sprintf('%s/anatBrainMask.nii.gz',odir) ,'file')
             unix(sprintf('cp %s/anatU.nii.gz %s/anatUA.nii.gz',pref,pref));
         end
         if DO_CEIL>0
-            [~,vvv] = unix(sprintf('3dBrickStat -percentile 98 1 98 -non-zero %s/anatUA.nii.gz',pref)); vvv=str2num(vvv);
+            cmd = sprintf('3dBrickStat -percentile 98 1 98 -non-zero %s/anatUA.nii.gz',pref);
+            [status,vout] = unix([cmd ' 2>&1']);
+            vvv = str2num(vout);
+
+            if status ~= 0 || numel(vvv) < 2
+                fprintf('3dBrickStat first attempt failed:\n%s\n', vout);
+                pause(1);
+
+                [status,vout] = unix([cmd ' 2>&1']);
+                vvv = str2num(vout);
+            end
+
+            if status ~= 0 || numel(vvv) < 2
+                error('3dBrickStat failed. status=%d, output=%s', status, vout);
+            end
             unix(sprintf('3dcalc -a %s/anatUA.nii.gz -expr ''maxbelow(%f,a)'' -prefix %s/anatUAC.nii.gz',pref,vvv(2),pref))
         else
             unix(sprintf('cp %s/anatUA.nii.gz %s/anatUAC.nii.gz',pref,pref));
