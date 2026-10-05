@@ -1,4 +1,4 @@
-function [subject_list] = P2_qc_diffusion( inputfile, outpath, qc_subj_idxes )
+function [subject_list] = P2_qc_diffusion( inputfile, outpath, qc_subj_idxes, varargin )
 %
 % . this script: 
 % . (a) checks whether input/pipelin/param/template/task/seed files can be read 
@@ -14,6 +14,14 @@ end
 
 if nargin<3
     qc_subj_idxes=[];
+end
+
+headless = false;
+if ~isempty(varargin)
+    if numel(varargin) ~= 1 || ~(ischar(varargin{1}) || isstring(varargin{1})) || ~strcmpi(varargin{1},'headless')
+        error('Optional fourth argument must be ''headless'' when provided.')
+    end
+    headless = true;
 end
 
 %% ========= PHASE ZERO GO ========= %%
@@ -200,9 +208,11 @@ out.thr(out.thr<0)=0;
 clear abar; legcell = {'mot-mpe','mot-bold'};
 abar(:,1) = sum(out.thr(:,[ 1: 4]),2);
 abar(:,2) = sum(out.thr(:,[ 5: 7]),2);
-figure, bar( abar,'stacked' ); ylim([0 10]);
-title('outlier counts - structural data');
-legend(legcell);
+if ~headless
+    figure, bar( abar,'stacked' ); ylim([0 10]);
+    title('outlier counts - structural data');
+    legend(legcell);
+end
 
 ix = find( sum(abar,2)>0 );
 
